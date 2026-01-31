@@ -1,0 +1,81 @@
+:root {
+    --corporate-blue: #0b1e47;
+    --corporate-accent: #ffc107;
+    --bg-gray: #f4f6f9;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--bg-gray);
+    min-height: 100vh;
+}
+
+.bg-corporate {
+    background-color: var(--corporate-blue) !important;
+}
+
+.text-corporate {
+    color: var(--corporate-blue) !important;
+}
+
+.btn-corporate {
+    background-color: var(--corporate-blue);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-corporate:hover {
+    background-color: #06122e;
+    transform: translateY(-2px);
+    color: white;
+}
+
+.btn-outline-corporate {
+    border: 2px solid var(--corporate-blue);
+    color: var(--corporate-blue);
+    background: white;
+}
+
+.btn-outline-corporate:hover {
+    background-color: var(--corporate-blue);
+    color: white;
+}
+
+.card-custom {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+.navbar-brand {
+    font-size: 1.25rem;
+    letter-spacing: 0.5px;
+}
+
+.avatar-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Ajustes para móviles */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
