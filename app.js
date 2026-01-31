@@ -6,7 +6,7 @@
 const CONFIG = {
     // 🔴 IMPORTANTE: Después de actualizar los archivos .gs y dar "Nueva Versión",
     // COPIA Y PEGA AQUÍ TU NUEVA URL DE GOOGLE APPS SCRIPT
-    API_URL: "https://script.google.com/macros/s/AKfycbyr9vH4GqEiT6FHYdnzigE5vTFoaaoP2-Lu5uix24WO9o2M9JoB7xknljXHkvxs9rVw/exec", 
+    API_URL: "https://script.google.com/macros/s/AKfycbwm-HV30TiGK61EylJlkeBwUt2ifumc_y6K1gyla9ARvQYe7mMJuLp3MSomrQMHGOLDVQ/exec", 
     
     PIN_CONTADOR: "1234" 
 };
