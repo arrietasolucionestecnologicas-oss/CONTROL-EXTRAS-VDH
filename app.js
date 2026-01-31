@@ -1,29 +1,47 @@
 /**
- * VDH CONTABLE SYSTEM - FRONTEND CORE
- * Autor: Gerson Arrieta (ASR)
+ * VDH CONTABLE SYSTEM - FRONTEND
+ * Estrategia: "Simple POST" (Clonada de App Pro para evitar CORS/302)
  */
 
 const CONFIG = {
-    // 🔴 REEMPLAZA ESTO CON TU URL NUEVA SI CAMBIASTE EL SCRIPT
-    API_URL: "https://script.google.com/macros/s/AKfycby5ujA0f8kPjitamF13ejJBxOC4BUZCV53M9FQ1iPWWBHk_B2qiWgEDPAle01lsctjb3w/exec",
+    // 🔴 IMPORTANTE: Después de actualizar los archivos .gs y dar "Nueva Versión",
+    // COPIA Y PEGA AQUÍ TU NUEVA URL DE GOOGLE APPS SCRIPT
+    API_URL: "https://script.google.com/macros/s/AKfycbyr9vH4GqEiT6FHYdnzigE5vTFoaaoP2-Lu5uix24WO9o2M9JoB7xknljXHkvxs9rVw/exec", 
+    
     PIN_CONTADOR: "1234" 
 };
 
-// Objeto Principal de la Aplicación
+// --- FUNCIÓN NÚCLEO DE COMUNICACIÓN (POST ONLY) ---
+async function sendRequest(action, payload = {}) {
+    const options = { 
+        method: "POST", 
+        // Enviamos un string JSON plano. Apps Script lo recibirá en e.postData.contents
+        body: JSON.stringify({ action: action, payload: payload }) 
+    };
+    
+    try {
+        // Al usar POST sin headers 'Content-Type', evitamos el 'Pre-flight' de CORS
+        const response = await fetch(CONFIG.API_URL, options);
+        const json = await response.json();
+        return json;
+    } catch (e) {
+        console.error("Error de conexión:", e);
+        throw "No se pudo conectar con el servidor.";
+    }
+}
+
+// --- OBJETO PRINCIPAL DE LA APP ---
 const app = {
-    state: {
-        trabajadores: [],
-        clientes: []
-    },
+    state: { trabajadores: [], clientes: [] },
 
     init: function() {
-        console.log("VDH System Iniciado");
+        console.log("VDH System Iniciado (Modo POST)");
         
-        // Setup Fecha Hoy
+        // Configurar fecha por defecto a HOY
         const dateInput = document.getElementById('inputFecha');
         if(dateInput) dateInput.valueAsDate = new Date();
 
-        // Listeners Principales
+        // Listeners de Formularios
         const formHoras = document.getElementById('form-horas');
         if(formHoras) formHoras.addEventListener('submit', (e) => this.guardarHoras(e));
 
@@ -38,36 +56,35 @@ const app = {
         let pin = prompt("🔐 VDH SEGURIDAD\nIngrese PIN de Contador:");
         if (pin === CONFIG.PIN_CONTADOR) {
             this.cambiarPantalla('view-contador');
-            this.cargarReporteFull(); // Cargar datos administrativos
+            this.cargarReporteFull();
         } else {
             this.mostrarToast("Acceso Denegado", "error");
         }
     },
-
+    
     cambiarPantalla: function(id) {
         document.querySelectorAll('.container.fade-in').forEach(el => el.classList.add('d-none'));
         document.getElementById(id).classList.remove('d-none');
     },
-
+    
     toggleLoader: function(show) {
         const el = document.getElementById('loader');
         if(el) show ? el.classList.remove('d-none') : el.classList.add('d-none');
     },
 
-    // --- CONEXIÓN DE DATOS ---
-    fetchMetadata: async function() {
-        try {
-            const res = await fetch(`${CONFIG.API_URL}?action=get_metadata`);
-            const json = await res.json();
+    // --- LOGICA DE DATOS ---
+    fetchMetadata: function() {
+        // Llamada POST al backend
+        sendRequest("get_metadata").then(json => {
             if (json.status === 'success') {
                 this.state.trabajadores = json.data.empleados;
                 this.state.clientes = json.data.clientes;
                 this.renderListas();
                 
-                // Si viene configuración, precargarla en el formulario oculto
+                // Si viene configuración, cargarla
                 if(json.data.config) this.renderConfig(json.data.config);
             }
-        } catch (e) { console.error("Error metadata", e); }
+        }).catch(err => console.error(err));
     },
 
     renderListas: function() {
@@ -87,12 +104,11 @@ const app = {
         });
     },
 
-    // --- ACCIONES DIGITADOR ---
-    guardarHoras: async function(e) {
+    guardarHoras: function(e) {
         e.preventDefault();
         this.toggleLoader(true);
         
-        const payload = {
+        const datos = {
             registros: [{
                 trabajador: document.getElementById('inputTrabajador').value,
                 fecha: document.getElementById('inputFecha').value,
@@ -104,41 +120,26 @@ const app = {
             }]
         };
 
-        try {
-            const res = await fetch(CONFIG.API_URL + "?action=registrar_horas", {
-                method: 'POST', body: JSON.stringify(payload)
-            });
-            const json = await res.json();
+        sendRequest("registrar_horas", datos).then(json => {
             if(json.status === 'success') {
                 this.mostrarToast("✅ Reporte guardado correctamente");
                 document.getElementById('form-horas').reset();
                 document.getElementById('inputFecha').valueAsDate = new Date();
-            } else { throw new Error(json.message); }
-        } catch(err) {
-            this.mostrarToast("Error: " + err.message, "error");
-        } finally {
-            this.toggleLoader(false);
-        }
+            } else { 
+                alert("Error del servidor: " + json.message); 
+            }
+        }).catch(err => this.mostrarToast(err, "error"))
+          .finally(() => this.toggleLoader(false));
     },
 
-    // --- ACCIONES CONTADOR ---
-    cargarReporteFull: async function() {
+    cargarReporteFull: function() {
         this.toggleLoader(true);
-        try {
-            const res = await fetch(CONFIG.API_URL + "?action=obtener_reporte_full");
-            const json = await res.json();
-            
+        sendRequest("obtener_reporte_full").then(json => {
             if(json.status === 'success') {
                 this.renderPendientes(json.data.pendientes);
-                this.renderNomina(json.data.nomina);
                 this.renderConfig(json.data.config);
             }
-        } catch(e) {
-            console.error(e);
-            this.mostrarToast("Error cargando dashboard", "error");
-        } finally {
-            this.toggleLoader(false);
-        }
+        }).finally(() => this.toggleLoader(false));
     },
 
     renderPendientes: function(lista) {
@@ -148,138 +149,96 @@ const app = {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No hay registros pendientes.</td></tr>';
             return;
         }
-
         lista.forEach(item => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.fecha}</td>
-                <td class="fw-bold text-dark">${item.trabajador}</td>
-                <td class="text-center"><span class="badge bg-light text-dark border">${parseFloat(item.total).toFixed(1)}h</span></td>
-                <td class="small text-danger">${item.extras > 0 ? '+' + item.extras + 'h Extra' : '-'}</td>
+                <td class="fw-bold">${item.trabajador}</td>
+                <td class="text-center">${parseFloat(item.total).toFixed(1)}h</td>
+                <td class="text-danger small">${item.extras}h Ext</td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-success me-1" onclick="app.gestionarHora(${item.row}, 'aprobar')"><i class="bi bi-check-lg"></i></button>
+                    <button class="btn btn-sm btn-outline-success" onclick="app.gestionarHora(${item.row}, 'aprobar')"><i class="bi bi-check-lg"></i></button>
                     <button class="btn btn-sm btn-outline-danger" onclick="app.gestionarHora(${item.row}, 'rechazar')"><i class="bi bi-x-lg"></i></button>
-                </td>
-            `;
+                </td>`;
             tbody.appendChild(tr);
         });
     },
 
-    gestionarHora: async function(rowId, type) {
+    gestionarHora: function(rowId, type) {
         if(!confirm(`¿Seguro deseas ${type} este registro?`)) return;
         this.toggleLoader(true);
         const action = type === 'aprobar' ? 'aprobar_horas' : 'rechazar_horas';
         
-        try {
-            await fetch(CONFIG.API_URL + `?action=${action}`, {
-                method: 'POST', body: JSON.stringify({ row: rowId })
-            });
-            this.mostrarToast(`Registro ${type === 'aprobar' ? 'Aprobado' : 'Rechazado'}`);
-            this.cargarReporteFull(); // Recargar tabla
-        } catch(e) {
-            this.mostrarToast("Error de conexión", "error");
-        } finally {
-            this.toggleLoader(false);
-        }
-    },
-
-    renderNomina: function(data) {
-        // Lógica visual para la tabla de dinero
-        // Se implementará completamente cuando el backend retorne cálculos reales
+        sendRequest(action, { row: rowId }).then(() => {
+            this.mostrarToast("Estado Actualizado");
+            this.cargarReporteFull();
+        }).finally(() => this.toggleLoader(false));
     },
 
     renderConfig: function(cfg) {
         if(!cfg) return;
-        // Mapear valores del backend a los inputs del frontend
         if(cfg.HORA_NOCTURNA_INICIO) document.getElementById('conf-noc-ini').value = cfg.HORA_NOCTURNA_INICIO;
         if(cfg.HORA_NOCTURNA_FIN) document.getElementById('conf-noc-fin').value = cfg.HORA_NOCTURNA_FIN;
         if(cfg.RECARGO_NOCTURNO) document.getElementById('conf-rec-noc').value = cfg.RECARGO_NOCTURNO;
-        // ... Agregar resto de campos
     },
 
-    guardarConfiguracion: async function() {
+    guardarConfiguracion: function() {
         this.toggleLoader(true);
         const data = {
             hora_noc_ini: document.getElementById('conf-noc-ini').value,
             hora_noc_fin: document.getElementById('conf-noc-fin').value,
-            recargo_noc: document.getElementById('conf-rec-noc').value,
-            // ... resto
+            recargo_noc: document.getElementById('conf-rec-noc').value
         };
-        try {
-            await fetch(CONFIG.API_URL + "?action=guardar_config", {
-                method: 'POST', body: JSON.stringify(data)
-            });
-            this.mostrarToast("Configuración Actualizada");
-        } catch(e) {
-            this.mostrarToast("Error guardando config", "error");
-        } finally {
-            this.toggleLoader(false);
-        }
+        sendRequest("guardar_config", data).then(() => {
+            this.mostrarToast("Configuración Guardada");
+        }).finally(() => this.toggleLoader(false));
     },
 
     mostrarToast: function(msg, type='success') {
         const t = document.getElementById('liveToast');
-        const b = document.getElementById('toast-message');
+        document.getElementById('toast-message').innerText = msg;
         const h = t.querySelector('.toast-header');
-        
-        b.innerText = msg;
-        if(type==='error') {
-            h.classList.remove('bg-corporate'); h.classList.add('bg-danger');
-        } else {
-            h.classList.add('bg-corporate'); h.classList.remove('bg-danger');
-        }
+        h.className = type==='error' ? 'toast-header bg-danger text-white' : 'toast-header bg-corporate text-white';
         new bootstrap.Toast(t).show();
     }
 };
 
 // --- MÓDULO DE MODALES (Popups) ---
 const modals = {
-    nuevoTrabajador: function() {
-        new bootstrap.Modal(document.getElementById('modalTrabajador')).show();
-    },
+    nuevoTrabajador: () => new bootstrap.Modal(document.getElementById('modalTrabajador')).show(),
     
-    guardarTrabajador: async function() {
+    guardarTrabajador: () => {
         const nombre = document.getElementById('new-worker-name').value;
         const salario = document.getElementById('new-worker-salary').value;
-        if(!nombre || !salario) return alert("Complete los campos");
-
+        if(!nombre || !salario) return alert("Complete todos los datos");
+        
         app.toggleLoader(true);
-        try {
-            await fetch(CONFIG.API_URL + "?action=crear_trabajador", {
-                method: 'POST', body: JSON.stringify({ nombre, salario })
-            });
+        sendRequest("crear_trabajador", { nombre, salario }).then(() => {
             app.mostrarToast("Trabajador Creado");
             bootstrap.Modal.getInstance(document.getElementById('modalTrabajador')).hide();
-            app.fetchMetadata(); // Refrescar lista
-        } catch(e) { app.mostrarToast("Error", "error"); }
-        finally { app.toggleLoader(false); }
+            app.fetchMetadata();
+        }).finally(() => app.toggleLoader(false));
     },
-
-    nuevoCliente: function() {
-        new bootstrap.Modal(document.getElementById('modalCliente')).show();
-    },
-
-    guardarCliente: async function() {
+    
+    nuevoCliente: () => new bootstrap.Modal(document.getElementById('modalCliente')).show(),
+    
+    guardarCliente: () => {
         const nombre = document.getElementById('new-client-name').value;
         if(!nombre) return alert("Escriba el nombre");
-
+        
         app.toggleLoader(true);
-        try {
-            await fetch(CONFIG.API_URL + "?action=crear_cliente", {
-                method: 'POST', body: JSON.stringify({ nombre })
-            });
-            app.mostrarToast("Cliente Guardado");
+        sendRequest("crear_cliente", { nombre }).then(() => {
+            app.mostrarToast("Cliente Creado");
             bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
-            app.fetchMetadata(); // Refrescar lista
-        } catch(e) { app.mostrarToast("Error", "error"); }
-        finally { app.toggleLoader(false); }
+            app.fetchMetadata();
+        }).finally(() => app.toggleLoader(false));
     }
 };
 
-// Función Global para el botón de Navbar
+// Globales
 window.cambiarVista = () => location.reload();
 window.app = app;
 window.modals = modals;
 
-// Iniciar al cargar
+// Iniciar
 document.addEventListener('DOMContentLoaded', () => app.init());
