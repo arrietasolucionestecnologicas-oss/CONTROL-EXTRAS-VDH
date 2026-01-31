@@ -4,8 +4,7 @@
  */
 
 const CONFIG = {
-    // 🔴 IMPORTANTE: Después de actualizar los archivos .gs y dar "Nueva Versión",
-    // COPIA Y PEGA AQUÍ TU NUEVA URL DE GOOGLE APPS SCRIPT
+    // 🔴 URL DE PRODUCCIÓN (Actualizada por el usuario)
     API_URL: "https://script.google.com/macros/s/AKfycbwm-HV30TiGK61EylJlkeBwUt2ifumc_y6K1gyla9ARvQYe7mMJuLp3MSomrQMHGOLDVQ/exec", 
     
     PIN_CONTADOR: "1234" 
@@ -175,11 +174,43 @@ const app = {
         }).finally(() => this.toggleLoader(false));
     },
 
+    // --- CORRECCIÓN: LIMPIEZA DE HORAS ---
     renderConfig: function(cfg) {
         if(!cfg) return;
-        if(cfg.HORA_NOCTURNA_INICIO) document.getElementById('conf-noc-ini').value = cfg.HORA_NOCTURNA_INICIO;
-        if(cfg.HORA_NOCTURNA_FIN) document.getElementById('conf-noc-fin').value = cfg.HORA_NOCTURNA_FIN;
+        
+        // Usamos la nueva función 'limpiarHora' para corregir el formato de Google
+        // Si Google manda "1899-12-30T21:00:00", esto lo convierte en "21:00"
+        if(cfg.HORA_NOCTURNA_INICIO) {
+            document.getElementById('conf-noc-ini').value = this.limpiarHora(cfg.HORA_NOCTURNA_INICIO);
+        }
+        if(cfg.HORA_NOCTURNA_FIN) {
+            document.getElementById('conf-noc-fin').value = this.limpiarHora(cfg.HORA_NOCTURNA_FIN);
+        }
+        
+        // Los números no necesitan limpieza
         if(cfg.RECARGO_NOCTURNO) document.getElementById('conf-rec-noc').value = cfg.RECARGO_NOCTURNO;
+        if(cfg.RECARGO_DOMINICAL) {
+             const domInput = document.getElementById('conf-dom');
+             if(domInput) domInput.value = cfg.RECARGO_DOMINICAL; 
+        }
+    },
+
+    // Nueva función auxiliar para evitar el error de formato
+    limpiarHora: function(valor) {
+        if (!valor) return "";
+        // Si ya viene limpio "21:00", lo devolvemos tal cual
+        if (typeof valor === 'string' && valor.length === 5) return valor;
+        
+        // Si viene como fecha larga de Google (ej: 1899-12-31T02:00:00.000Z)
+        try {
+            let fecha = new Date(valor);
+            let horas = fecha.getHours().toString().padStart(2, '0');
+            let minutos = fecha.getMinutes().toString().padStart(2, '0');
+            return `${horas}:${minutos}`;
+        } catch (e) {
+            console.error("Error limpiando hora:", valor);
+            return "00:00";
+        }
     },
 
     guardarConfiguracion: function() {
