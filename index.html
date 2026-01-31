@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Horas - Gerson Suite</title>
+    <title>VDH CONTABLE - Gestión Inteligente</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b1e47">
@@ -18,11 +18,11 @@
     <nav class="navbar navbar-dark bg-corporate shadow-sm sticky-top">
         <div class="container-fluid d-flex justify-content-between">
             <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <i class="bi bi-clock-history me-2"></i>
-                <span>Gerson<span class="text-warning">Suite</span></span>
+                <i class="bi bi-building-check me-2"></i>
+                <span>VDH<span class="text-warning"> CONTABLE</span></span>
             </a>
             <button class="btn btn-sm btn-outline-light" onclick="cambiarVista()">
-                <i class="bi bi-arrow-repeat"></i> Cambiar Rol
+                <i class="bi bi-person-badge"></i> Cambiar Rol
             </button>
         </div>
     </nav>
@@ -36,7 +36,7 @@
                             <i class="bi bi-shield-lock fs-1"></i>
                         </div>
                         <h4>Acceso al Sistema</h4>
-                        <p class="text-muted small">Selecciona tu perfil de ingreso</p>
+                        <p class="text-muted small">VDH Soluciones Tecnológicas</p>
                     </div>
                     <div class="d-grid gap-3">
                         <button class="btn btn-outline-corporate p-3 text-start" onclick="app.irADigitador()">
@@ -44,16 +44,16 @@
                                 <i class="bi bi-pencil-square fs-3 me-3 text-warning"></i>
                                 <div>
                                     <div class="fw-bold">Soy Digitador</div>
-                                    <small class="text-muted">Registrar horas diarias</small>
+                                    <small class="text-muted">Registrar horas y personal</small>
                                 </div>
                             </div>
                         </button>
                         <button class="btn btn-outline-corporate p-3 text-start" onclick="app.irAContador()">
                             <div class="d-flex align-items-center">
-                                <i class="bi bi-calculator fs-3 me-3 text-info"></i>
+                                <i class="bi bi-pie-chart fs-3 me-3 text-info"></i>
                                 <div>
                                     <div class="fw-bold">Soy Contador</div>
-                                    <small class="text-muted">Ver reportes y nómina</small>
+                                    <small class="text-muted">Aprobar, Configurar y Pagar</small>
                                 </div>
                             </div>
                         </button>
@@ -65,19 +65,24 @@
 
     <div id="view-digitador" class="container mt-4 mb-5 d-none fade-in">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="text-corporate"><i class="bi bi-plus-circle-dotted"></i> Nuevo Registro</h5>
-            <span class="badge bg-success" id="status-online">Online</span>
+            <h5 class="text-corporate"><i class="bi bi-plus-circle-dotted"></i> Reporte de Actividades</h5>
+            <span class="badge bg-success shadow-sm">Online</span>
         </div>
 
-        <div class="card card-custom">
+        <div class="card card-custom border-0 shadow">
             <div class="card-body p-4">
                 <form id="form-horas">
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label text-muted fw-bold small">TRABAJADOR</label>
-                            <select class="form-select" id="inputTrabajador" required>
-                                <option value="" selected disabled>Cargando lista...</option>
-                            </select>
+                            <div class="input-group">
+                                <select class="form-select" id="inputTrabajador" required>
+                                    <option value="" selected disabled>Cargando lista...</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" onclick="modals.nuevoTrabajador()">
+                                    <i class="bi bi-person-plus-fill"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted fw-bold small">FECHA</label>
@@ -88,38 +93,43 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label text-muted fw-bold small">CLIENTE / OBRA</label>
-                            <select class="form-select" id="inputCliente">
-                                <option value="" selected disabled>Cargando...</option>
-                            </select>
+                            <div class="input-group">
+                                <select class="form-select" id="inputCliente" required>
+                                    <option value="" selected disabled>Cargando...</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" onclick="modals.nuevoCliente()">
+                                    <i class="bi bi-building-add"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-muted fw-bold small">ACTIVIDAD REALIZADA</label>
-                            <input type="text" class="form-control" id="inputActividad" placeholder="Ej: Mantenimiento Tablero A" oninput="this.value = this.value.toUpperCase()">
+                            <input type="text" class="form-control" id="inputActividad" placeholder="Descripción técnica breve" oninput="this.value = this.value.toUpperCase()" required>
                         </div>
                     </div>
 
-                    <div class="p-3 bg-light rounded border border-light mb-3">
+                    <div class="p-3 bg-light rounded border border-light mb-4">
                         <div class="row g-3 align-items-end">
-                            <div class="col-4">
+                            <div class="col-6 col-md-4">
                                 <label class="form-label text-corporate fw-bold small">ENTRADA</label>
-                                <input type="time" class="form-control fw-bold" id="inputEntrada" required>
+                                <input type="time" class="form-control fw-bold text-center" id="inputEntrada" required>
                             </div>
-                            <div class="col-4">
+                            <div class="col-6 col-md-4">
                                 <label class="form-label text-corporate fw-bold small">SALIDA</label>
-                                <input type="time" class="form-control fw-bold" id="inputSalida" required>
+                                <input type="time" class="form-control fw-bold text-center" id="inputSalida" required>
                             </div>
-                            <div class="col-4">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="checkAlmuerzo" checked>
-                                    <label class="form-check-label small" for="checkAlmuerzo">Descontar Almuerzo (1h)</label>
+                            <div class="col-12 col-md-4">
+                                <div class="form-check form-switch pt-2">
+                                    <input class="form-check-input" type="checkbox" id="checkAlmuerzo" checked style="width: 3em; height: 1.5em;">
+                                    <label class="form-check-label ms-2 small fw-bold" for="checkAlmuerzo">Descontar Almuerzo</label>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-corporate btn-lg shadow-sm" id="btn-submit">
-                            <i class="bi bi-save2 me-2"></i> GUARDAR REGISTRO
+                        <button type="submit" class="btn btn-corporate btn-lg shadow-sm py-3" id="btn-submit">
+                            <i class="bi bi-send-check me-2"></i> GUARDAR REPORTE
                         </button>
                     </div>
                 </form>
@@ -128,77 +138,204 @@
     </div>
 
     <div id="view-contador" class="container mt-4 mb-5 d-none fade-in">
-        <div class="row mb-3">
-            <div class="col">
-                <h5 class="text-corporate"><i class="bi bi-graph-up"></i> Panel Contable</h5>
-            </div>
-            <div class="col-auto">
-                <button class="btn btn-outline-dark btn-sm" onclick="app.cargarReporte()"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
-                <div class="card bg-corporate text-white h-100">
-                    <div class="card-body text-center p-2">
-                        <small>Pendientes</small>
-                        <h3 class="fw-bold m-0" id="kpi-pendientes">--</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card bg-warning text-dark h-100">
-                    <div class="card-body text-center p-2">
-                        <small>Extras Totales</small>
-                        <h3 class="fw-bold m-0" id="kpi-extras">--h</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card card-custom">
-            <div class="card-header bg-white fw-bold text-muted small">
-                ÚLTIMOS REGISTROS SIN PROCESAR
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Trabajador</th>
-                            <th>Total H</th>
-                            <th>Extras</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-contador-body">
-                        <tr><td colspan="5" class="text-center text-muted py-3">Cargando datos...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
         
-        <div class="mt-3 text-end">
-             <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn btn-sm btn-link text-decoration-none">Ir al Google Sheet Maestro &rarr;</a>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="text-corporate fw-bold mb-0">Panel de Control VDH</h4>
+            <button class="btn btn-sm btn-outline-primary" onclick="app.cargarReporteFull()"><i class="bi bi-arrow-clockwise"></i> Actualizar Todo</button>
+        </div>
+
+        <ul class="nav nav-tabs nav-fill mb-4" id="contadorTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold" id="validar-tab" data-bs-toggle="tab" data-bs-target="#tab-validar" type="button">
+                    <i class="bi bi-check-square"></i> Validaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="nomina-tab" data-bs-toggle="tab" data-bs-target="#tab-nomina" type="button">
+                    <i class="bi bi-cash-stack"></i> Nómina ($)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="config-tab" data-bs-toggle="tab" data-bs-target="#tab-config" type="button">
+                    <i class="bi bi-gear-wide-connected"></i> Configuración
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="contadorTabContent">
+            
+            <div class="tab-pane fade show active" id="tab-validar" role="tabpanel">
+                <div class="alert alert-info border-0 shadow-sm d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+                    <div>
+                        <strong>Pendientes por Aprobar</strong>
+                        <div class="small">Revise las horas registradas antes de procesar pagos.</div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-corporate text-white small">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Trabajador</th>
+                                    <th class="text-center">Total H</th>
+                                    <th>Extras</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-pendientes">
+                                <tr><td colspan="5" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-nomina" role="tabpanel">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                         <div class="card bg-corporate text-white h-100">
+                            <div class="card-body text-center">
+                                <div class="text-white-50 small text-uppercase">Total Nómina Estimada</div>
+                                <h2 class="fw-bold mb-0" id="kpi-total-nomina">$ 0.00</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-white border border-warning h-100">
+                            <div class="card-body text-center">
+                                <div class="text-muted small text-uppercase">Horas Extras Totales</div>
+                                <h2 class="fw-bold text-dark mb-0" id="kpi-total-horas">0.0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-bold">Desglose por Empleado</div>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle mb-0 small">
+                            <thead>
+                                <tr>
+                                    <th>Empleado</th>
+                                    <th class="text-end">Salario Base</th>
+                                    <th class="text-end">Valor Extras</th>
+                                    <th class="text-end bg-light fw-bold">TOTAL PAGAR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-nomina">
+                                <tr><td colspan="4" class="text-center py-3">Sin datos calculados.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-config" role="tabpanel">
+                <div class="card card-custom p-4 border-0">
+                    <h5 class="mb-4 text-corporate">Parametrización del Sistema</h5>
+                    <form id="form-config">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Hora Inicio Nocturna</label>
+                                <input type="time" class="form-control" id="conf-noc-ini" value="21:00">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Hora Fin Nocturna</label>
+                                <input type="time" class="form-control" id="conf-noc-fin" value="06:00">
+                            </div>
+                            
+                            <div class="col-12"><hr></div>
+                            
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-bold small text-muted">% Recargo Nocturno</label>
+                                <input type="number" class="form-control" id="conf-rec-noc" value="1.35" step="0.01">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-bold small text-muted">% Extra Diurna</label>
+                                <input type="number" class="form-control" id="conf-ext-diu" value="1.25" step="0.01">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-bold small text-muted">% Dominical</label>
+                                <input type="number" class="form-control" id="conf-dom" value="1.75" step="0.01">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-bold small text-muted">Horas Mensuales</label>
+                                <input type="number" class="form-control" id="conf-div-men" value="240">
+                            </div>
+
+                            <div class="col-12 mt-4">
+                                <button type="button" class="btn btn-warning w-100 fw-bold" onclick="app.guardarConfiguracion()">
+                                    <i class="bi bi-save"></i> ACTUALIZAR PARÁMETROS
+                                </button>
+                                <small class="text-muted d-block mt-2 text-center">* Estos cambios afectan los cálculos inmediatamente.</small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTrabajador" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-corporate text-white">
+                    <h5 class="modal-title fs-6">Nuevo Trabajador</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-new-worker">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Nombre Completo (Mayúsculas)</label>
+                            <input type="text" class="form-control" id="new-worker-name" oninput="this.value = this.value.toUpperCase()" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Salario Mensual Base</label>
+                            <input type="number" class="form-control" id="new-worker-salary" placeholder="$$$" required>
+                        </div>
+                        <button type="button" class="btn btn-corporate w-100" onclick="modals.guardarTrabajador()">Crear Empleado</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-corporate text-white">
+                    <h5 class="modal-title fs-6">Nuevo Cliente / Proyecto</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Nombre Cliente</label>
+                        <input type="text" class="form-control" id="new-client-name" oninput="this.value = this.value.toUpperCase()">
+                    </div>
+                    <button type="button" class="btn btn-corporate w-100" onclick="modals.guardarCliente()">Guardar Cliente</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <div id="loader" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 2000;">
         <div class="text-center">
-            <div class="spinner-border text-corporate" role="status"></div>
-            <p class="mt-2 fw-bold text-corporate small">Conectando con Google...</p>
+            <div class="spinner-border text-corporate" role="status" style="width: 3rem; height: 3rem;"></div>
+            <p class="mt-3 fw-bold text-corporate">Procesando...</p>
         </div>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header bg-corporate text-white">
-                <strong class="me-auto">Sistema</strong>
+                <strong class="me-auto">VDH System</strong>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
             </div>
-            <div class="toast-body" id="toast-message">
-                Acción realizada correctamente.
-            </div>
+            <div class="toast-body bg-white text-dark shadow fw-bold" id="toast-message"></div>
         </div>
     </div>
 
