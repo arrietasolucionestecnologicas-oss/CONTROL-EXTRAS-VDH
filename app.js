@@ -5,7 +5,7 @@
 
 const CONFIG = {
     // 🔴 REEMPLAZA ESTO CON TU URL NUEVA SI CAMBIASTE EL SCRIPT
-    API_URL: "https://script.google.com/macros/s/AKfycbwodxrlf8FsHtkyJp8kaENejYf15_F9YFGUxM3olNM1riPNvuREKXgEWnAkPb2A4YT2_g/exec",
+    API_URL: "https://script.google.com/macros/s/AKfycby5ujA0f8kPjitamF13ejJBxOC4BUZCV53M9FQ1iPWWBHk_B2qiWgEDPAle01lsctjb3w/exec",
     PIN_CONTADOR: "1234" 
 };
 
