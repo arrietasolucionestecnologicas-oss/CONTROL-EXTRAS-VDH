@@ -3,343 +3,354 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VDH CONTABLE - Gestión Inteligente</title>
+    <title>VDH Contable System | SaaS</title>
     
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0b1e47">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-light">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
-    <nav class="navbar navbar-dark bg-corporate shadow-sm sticky-top">
-        <div class="container-fluid d-flex justify-content-between">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <i class="bi bi-building-check me-2"></i>
-                <span>VDH<span class="text-warning"> CONTABLE</span></span>
-            </a>
-            <button class="btn btn-sm btn-outline-light" onclick="cambiarVista()">
-                <i class="bi bi-person-badge"></i> Cambiar Rol
-            </button>
-        </div>
-    </nav>
+    <style>
+        :root {
+            --vdh-primary: #0b1e47;  /* Azul Noche Corporativo */
+            --vdh-accent: #ffc107;   /* Amarillo Warning */
+            --vdh-light: #f8f9fa;
+        }
 
-    <div id="view-login" class="container mt-5 fade-in">
-        <div class="row justify-content-center">
-            <div class="col-md-5 col-lg-4">
-                <div class="card card-custom text-center p-4">
-                    <div class="mb-4">
-                        <div class="avatar-circle bg-corporate text-white mx-auto mb-3">
-                            <i class="bi bi-shield-lock fs-1"></i>
-                        </div>
-                        <h4>Acceso al Sistema</h4>
-                        <p class="text-muted small">VDH Soluciones Tecnológicas</p>
-                    </div>
-                    <div class="d-grid gap-3">
-                        <button class="btn btn-outline-corporate p-3 text-start" onclick="app.irADigitador()">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-pencil-square fs-3 me-3 text-warning"></i>
-                                <div>
-                                    <div class="fw-bold">Soy Digitador</div>
-                                    <small class="text-muted">Registrar horas y personal</small>
-                                </div>
-                            </div>
-                        </button>
-                        <button class="btn btn-outline-corporate p-3 text-start" onclick="app.irAContador()">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-pie-chart fs-3 me-3 text-info"></i>
-                                <div>
-                                    <div class="fw-bold">Soy Contador</div>
-                                    <small class="text-muted">Aprobar, Configurar y Pagar</small>
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
 
-    <div id="view-digitador" class="container mt-4 mb-5 d-none fade-in">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="text-corporate"><i class="bi bi-plus-circle-dotted"></i> Reporte de Actividades</h5>
-            <span class="badge bg-success shadow-sm">Online</span>
-        </div>
+        /* Utilidad para ocultar vistas */
+        .d-none { display: none !important; }
 
-        <div class="card card-custom border-0 shadow">
-            <div class="card-body p-4">
-                <form id="form-horas">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label text-muted fw-bold small">TRABAJADOR</label>
-                            <div class="input-group">
-                                <select class="form-select" id="inputTrabajador" required>
-                                    <option value="" selected disabled>Cargando lista...</option>
-                                </select>
-                                <button class="btn btn-outline-secondary" type="button" onclick="modals.nuevoTrabajador()">
-                                    <i class="bi bi-person-plus-fill"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label text-muted fw-bold small">FECHA</label>
-                            <input type="date" class="form-control" id="inputFecha" required>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label text-muted fw-bold small">CLIENTE / OBRA</label>
-                            <div class="input-group">
-                                <select class="form-select" id="inputCliente" required>
-                                    <option value="" selected disabled>Cargando...</option>
-                                </select>
-                                <button class="btn btn-outline-secondary" type="button" onclick="modals.nuevoCliente()">
-                                    <i class="bi bi-building-add"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label text-muted fw-bold small">ACTIVIDAD REALIZADA</label>
-                            <input type="text" class="form-control" id="inputActividad" placeholder="Descripción técnica breve" oninput="this.value = this.value.toUpperCase()" required>
-                        </div>
-                    </div>
-
-                    <div class="p-3 bg-light rounded border border-light mb-4">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-6 col-md-4">
-                                <label class="form-label text-corporate fw-bold small">ENTRADA</label>
-                                <input type="time" class="form-control fw-bold text-center" id="inputEntrada" required>
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label text-corporate fw-bold small">SALIDA</label>
-                                <input type="time" class="form-control fw-bold text-center" id="inputSalida" required>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-check form-switch pt-2">
-                                    <input class="form-check-input" type="checkbox" id="checkAlmuerzo" checked style="width: 3em; height: 1.5em;">
-                                    <label class="form-check-label ms-2 small fw-bold" for="checkAlmuerzo">Descontar Almuerzo</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-corporate btn-lg shadow-sm py-3" id="btn-submit">
-                            <i class="bi bi-send-check me-2"></i> GUARDAR REPORTE
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-contador" class="container mt-4 mb-5 d-none fade-in">
+        /* Estilo Header */
+        .bg-corporate {
+            background-color: var(--vdh-primary) !important;
+            color: white;
+        }
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="text-corporate fw-bold mb-0">Panel de Control VDH</h4>
-            <button class="btn btn-sm btn-outline-primary" onclick="app.cargarReporteFull()"><i class="bi bi-arrow-clockwise"></i> Actualizar Todo</button>
-        </div>
+        .btn-corporate {
+            background-color: var(--vdh-primary);
+            color: white;
+            border: none;
+        }
+        .btn-corporate:hover {
+            background-color: #0d2659;
+            color: #fff;
+        }
 
-        <ul class="nav nav-tabs nav-fill mb-4" id="contadorTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-bold" id="validar-tab" data-bs-toggle="tab" data-bs-target="#tab-validar" type="button">
-                    <i class="bi bi-check-square"></i> Validaciones
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold" id="nomina-tab" data-bs-toggle="tab" data-bs-target="#tab-nomina" type="button">
-                    <i class="bi bi-cash-stack"></i> Nómina ($)
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold" id="config-tab" data-bs-toggle="tab" data-bs-target="#tab-config" type="button">
-                    <i class="bi bi-gear-wide-connected"></i> Configuración
-                </button>
-            </li>
-        </ul>
+        /* Loader de Pantalla Completa */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .spinner-border {
+            width: 3rem; height: 3rem;
+            color: var(--vdh-primary);
+        }
 
-        <div class="tab-content" id="contadorTabContent">
-            
-            <div class="tab-pane fade show active" id="tab-validar" role="tabpanel">
-                <div class="alert alert-info border-0 shadow-sm d-flex align-items-center">
-                    <i class="bi bi-info-circle-fill me-2 fs-4"></i>
-                    <div>
-                        <strong>Pendientes por Aprobar</strong>
-                        <div class="small">Revise las horas registradas antes de procesar pagos.</div>
-                    </div>
-                </div>
+        /* Tarjetas */
+        .card-custom {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body>
 
-                <div class="card border-0 shadow-sm">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-corporate text-white small">
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Trabajador</th>
-                                    <th class="text-center">Total H</th>
-                                    <th>Extras</th>
-                                    <th class="text-end">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-pendientes">
-                                <tr><td colspan="5" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Cargando...</td></tr>
-                            </tbody>
-                        </table>
+    <div id="loader" class="d-none">
+        <div class="spinner-border mb-3" role="status"></div>
+        <h6 class="text-muted fw-bold">Procesando...</h6>
+    </div>
+
+    <div id="view-login" class="container mt-5 pt-5 app-view">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-custom">
+                    <div class="card-body p-4 text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-building-fill-lock" style="font-size: 3rem; color: var(--vdh-primary);"></i>
+                        </div>
+                        <h3 class="mb-1" style="color: var(--vdh-primary); font-weight: 800;">VDH CONTABLE</h3>
+                        <p class="text-muted small mb-4">Acceso Corporativo Seguro</p>
+                        
+                        <div class="form-floating mb-3 text-start">
+                            <select id="login-empresa-select" class="form-select">
+                                <option disabled selected>Cargando empresas...</option>
+                            </select>
+                            <label>Seleccione su Empresa</label>
+                        </div>
+                        
+                        <div class="form-floating mb-4 text-start">
+                            <input type="password" id="login-token" class="form-control" placeholder="****">
+                            <label>Token de Acceso</label>
+                        </div>
+                        
+                        <button id="btn-login-action" class="btn btn-corporate w-100 py-2 fw-bold shadow-sm">
+                            INGRESAR AL SISTEMA
+                        </button>
+
+                        <div class="mt-4 border-top pt-3">
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                VDH System v4.0 &copy; 2026<br>Powered by A.S.T Soluciones
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="tab-pane fade" id="tab-nomina" role="tabpanel">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                         <div class="card bg-corporate text-white h-100">
-                            <div class="card-body text-center">
-                                <div class="text-white-50 small text-uppercase">Total Nómina Estimada</div>
-                                <h2 class="fw-bold mb-0" id="kpi-total-nomina">$ 0.00</h2>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card bg-white border border-warning h-100">
-                            <div class="card-body text-center">
-                                <div class="text-muted small text-uppercase">Horas Extras Totales</div>
-                                <h2 class="fw-bold text-dark mb-0" id="kpi-total-horas">0.0</h2>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white fw-bold">Desglose por Empleado</div>
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle mb-0 small">
-                            <thead>
-                                <tr>
-                                    <th>Empleado</th>
-                                    <th class="text-end">Salario Base</th>
-                                    <th class="text-end">Valor Extras</th>
-                                    <th class="text-end bg-light fw-bold">TOTAL PAGAR</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-nomina">
-                                <tr><td colspan="4" class="text-center py-3">Sin datos calculados.</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="tab-config" role="tabpanel">
-                <div class="card card-custom p-4 border-0">
-                    <h5 class="mb-4 text-corporate">Parametrización del Sistema</h5>
-                    <form id="form-config">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">Hora Inicio Nocturna</label>
-                                <input type="time" class="form-control" id="conf-noc-ini" value="21:00">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">Hora Fin Nocturna</label>
-                                <input type="time" class="form-control" id="conf-noc-fin" value="06:00">
-                            </div>
-                            
-                            <div class="col-12"><hr></div>
-                            
-                            <div class="col-6 col-md-3">
-                                <label class="form-label fw-bold small text-muted">% Recargo Nocturno</label>
-                                <input type="number" class="form-control" id="conf-rec-noc" value="1.35" step="0.01">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label fw-bold small text-muted">% Extra Diurna</label>
-                                <input type="number" class="form-control" id="conf-ext-diu" value="1.25" step="0.01">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label fw-bold small text-muted">% Dominical</label>
-                                <input type="number" class="form-control" id="conf-dom" value="1.75" step="0.01">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label fw-bold small text-muted">Horas Mensuales</label>
-                                <input type="number" class="form-control" id="conf-div-men" value="240">
-                            </div>
-
-                            <div class="col-12 mt-4">
-                                <button type="button" class="btn btn-warning w-100 fw-bold" onclick="app.guardarConfiguracion()">
-                                    <i class="bi bi-save"></i> ACTUALIZAR PARÁMETROS
-                                </button>
-                                <small class="text-muted d-block mt-2 text-center">* Estos cambios afectan los cálculos inmediatamente.</small>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
         </div>
     </div>
 
-    <div class="modal fade" id="modalTrabajador" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <div id="view-digitador" class="app-view d-none">
+        
+        <nav class="navbar navbar-expand-lg navbar-dark bg-corporate shadow-sm">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" href="#">
+                    <i class="bi bi-clock-history me-2"></i>VDH SYSTEM
+                </a>
+                
+                <div class="d-flex align-items-center">
+                    <span id="nav-empresa-label" class="badge bg-warning text-dark me-3 shadow-sm px-3 py-2">
+                        Empresa...
+                    </span>
+                    
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item"><a class="nav-link active" href="#" onclick="app.irADigitador()">Registrar</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" onclick="app.irAContador()">Contador</a></li>
+                        <li class="nav-item ms-lg-3 mt-2 mt-lg-0">
+                            <button class="btn btn-sm btn-outline-light w-100" onclick="app.logout()">
+                                <i class="bi bi-box-arrow-right"></i> Salir
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mt-4 mb-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card card-custom">
+                        <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                            <h5 class="text-secondary fw-bold"><i class="bi bi-pencil-square"></i> Reporte Diario</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            
+                            <form id="form-horas">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted">Fecha</label>
+                                        <input type="date" id="inputFecha" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label small fw-bold text-muted">Trabajador</label>
+                                        <div class="input-group">
+                                            <select id="inputTrabajador" class="form-select" required>
+                                                <option value="" disabled selected>Cargando...</option>
+                                            </select>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="modals.nuevoTrabajador()">+</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted">Cliente / Proyecto</label>
+                                        <div class="input-group">
+                                            <select id="inputCliente" class="form-select" required>
+                                                <option value="" disabled selected>Cargando...</option>
+                                            </select>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="modals.nuevoCliente()">+</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted">Actividad Realizada</label>
+                                        <input type="text" id="inputActividad" class="form-control" placeholder="Ej: Mantenimiento tablero" required>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-4">
+                                    <div class="col-4">
+                                        <label class="form-label small fw-bold text-muted">Entrada</label>
+                                        <input type="time" id="inputEntrada" class="form-control" required>
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label small fw-bold text-muted">Salida</label>
+                                        <input type="time" id="inputSalida" class="form-control" required>
+                                    </div>
+                                    <div class="col-4 d-flex align-items-end">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="checkAlmuerzo" checked>
+                                            <label class="form-check-label small" for="checkAlmuerzo">
+                                                Descontar Almuerzo
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-corporate btn-lg shadow-sm">
+                                        <i class="bi bi-save me-2"></i> GUARDAR REPORTE
+                                    </button>
+                                </div>
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-contador" class="app-view d-none">
+        
+        <nav class="navbar navbar-dark bg-dark mb-4">
+            <div class="container">
+                <span class="navbar-brand"><i class="bi bi-shield-lock me-2"></i>MODO CONTADOR</span>
+                <button class="btn btn-sm btn-outline-light" onclick="app.irADigitador()">Volver</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <ul class="nav nav-tabs mb-4" id="contadorTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active fw-bold" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#tab-pendientes" type="button">Pendientes de Aprobar</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link text-muted" id="config-tab" data-bs-toggle="tab" data-bs-target="#tab-config" type="button">Configuración Global</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="contadorTabContent">
+                
+                <div class="tab-pane fade show active" id="tab-pendientes">
+                    <div class="card card-custom">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Trabajador</th>
+                                            <th class="text-center">Total</th>
+                                            <th>Detalle Extras</th>
+                                            <th class="text-end">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-pendientes">
+                                        <tr><td colspan="5" class="text-center py-4 text-muted">Cargando datos...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-config">
+                    <div class="card card-custom" style="max-width: 600px; margin: 0 auto;">
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-3">Parámetros de Cálculo</h6>
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label class="form-label small">Inicio Nocturna</label>
+                                    <input type="time" id="conf-noc-ini" class="form-control">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Fin Nocturna</label>
+                                    <input type="time" id="conf-noc-fin" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Factor Recargo Nocturno</label>
+                                    <input type="number" id="conf-rec-noc" class="form-control" step="0.01">
+                                </div>
+                                <div class="col-12 mt-4">
+                                    <button class="btn btn-primary w-100" onclick="app.guardarConfiguracion()">Actualizar Parámetros</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTrabajador" tabindex="-1">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-corporate text-white">
                     <h5 class="modal-title fs-6">Nuevo Trabajador</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="form-new-worker">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Nombre Completo (Mayúsculas)</label>
-                            <input type="text" class="form-control" id="new-worker-name" oninput="this.value = this.value.toUpperCase()" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Salario Mensual Base</label>
-                            <input type="number" class="form-control" id="new-worker-salary" placeholder="$$$" required>
-                        </div>
-                        <button type="button" class="btn btn-corporate w-100" onclick="modals.guardarTrabajador()">Crear Empleado</button>
-                    </form>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo</label>
+                        <input type="text" id="new-worker-name" class="form-control" style="text-transform: uppercase;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Salario Base</label>
+                        <input type="number" id="new-worker-salary" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="modals.guardarTrabajador()">Guardar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <div class="modal fade" id="modalCliente" tabindex="-1">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-corporate text-white">
-                    <h5 class="modal-title fs-6">Nuevo Cliente / Proyecto</h5>
+                    <h5 class="modal-title fs-6">Nuevo Cliente</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Nombre Cliente</label>
-                        <input type="text" class="form-control" id="new-client-name" oninput="this.value = this.value.toUpperCase()">
+                        <label class="form-label">Nombre Empresa / Cliente</label>
+                        <input type="text" id="new-client-name" class="form-control" style="text-transform: uppercase;">
                     </div>
-                    <button type="button" class="btn btn-corporate w-100" onclick="modals.guardarCliente()">Guardar Cliente</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="modals.guardarCliente()">Guardar</button>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div id="loader" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 2000;">
-        <div class="text-center">
-            <div class="spinner-border text-corporate" role="status" style="width: 3rem; height: 3rem;"></div>
-            <p class="mt-3 fw-bold text-corporate">Procesando...</p>
         </div>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header bg-corporate text-white">
-                <strong class="me-auto">VDH System</strong>
+                <strong class="me-auto">Sistema VDH</strong>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
             </div>
-            <div class="toast-body bg-white text-dark shadow fw-bold" id="toast-message"></div>
+            <div class="toast-body" id="toast-message">
+                Operación exitosa.
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script src="app.js"></script>
+
 </body>
 </html>
