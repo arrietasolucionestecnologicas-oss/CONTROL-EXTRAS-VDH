@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VDH Enterprise v7</title>
+    <title>VDH Enterprise v7.1</title>
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -16,16 +16,12 @@
         .bg-admin { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; }
         #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
         .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .day-config-row { background: #fff; padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
         .money-val { font-family: 'Consolas', monospace; font-weight: bold; color: #198754; }
     </style>
 </head>
 <body>
 
-    <div id="loader" class="d-none">
-        <div class="spinner-border text-primary mb-3"></div>
-        <h6 class="text-muted fw-bold">Procesando...</h6>
-    </div>
+    <div id="loader" class="d-none"><div class="spinner-border text-primary"></div><h6 class="text-muted fw-bold">Cargando...</h6></div>
 
     <div id="view-login" class="container mt-5 pt-5 app-view">
         <div class="row justify-content-center">
@@ -42,87 +38,34 @@
     </div>
 
     <div id="view-admin" class="app-view d-none">
-        <nav class="navbar navbar-dark bg-admin mb-4 px-3 shadow">
-            <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2 me-2"></i>GERENCIA</span>
-            <button class="btn btn-sm btn-outline-light" onclick="app.logout()">Salir</button>
-        </nav>
-        <div class="container">
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card card-custom p-3">
-                        <h6 class="fw-bold text-success mb-3">Nueva Empresa</h6>
-                        <input id="admin-new-name" class="form-control mb-2" placeholder="Nombre">
-                        <input id="admin-new-token" class="form-control mb-3" placeholder="Clave Acceso">
-                        <button class="btn btn-success w-100" onclick="app.adminCrearEmpresa()">CREAR</button>
-                    </div>
-                </div>
-                <div class="col-md-8">
-                    <div class="card card-custom p-0" style="max-height:600px;overflow-y:auto">
-                        <div class="card-header bg-white fw-bold">Empresas Activas <button onclick="app.refreshAdminList()" class="btn btn-sm btn-light float-end">↻</button></div>
-                        <ul class="list-group list-group-flush" id="admin-company-list"></ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <nav class="navbar navbar-dark bg-admin mb-4 px-3 shadow"><span class="navbar-brand fw-bold">GERENCIA</span><button class="btn btn-sm btn-outline-light" onclick="app.logout()">Salir</button></nav>
+        <div class="container"><div class="row g-4"><div class="col-md-4"><div class="card card-custom p-3"><h6 class="fw-bold text-success mb-3">Nueva Empresa</h6><input id="admin-new-name" class="form-control mb-2" placeholder="Nombre"><input id="admin-new-token" class="form-control mb-3" placeholder="Clave Acceso"><button class="btn btn-success w-100" onclick="app.adminCrearEmpresa()">CREAR</button></div></div><div class="col-md-8"><div class="card card-custom p-0" style="max-height:600px;overflow-y:auto"><div class="card-header bg-white fw-bold">Empresas Activas <button onclick="app.refreshAdminList()" class="btn btn-sm btn-light float-end">↻</button></div><ul class="list-group list-group-flush" id="admin-company-list"></ul></div></div></div></div>
     </div>
 
     <div id="view-contador" class="app-view d-none">
-        <nav class="navbar navbar-dark bg-dark mb-4 px-3">
-            <span class="navbar-brand fw-bold"><i class="bi bi-calculator me-2"></i>NÓMINA</span>
-            <span id="contador-empresa-label" class="badge bg-warning text-dark ms-2"></span>
-            <button class="btn btn-sm btn-outline-light ms-auto" onclick="app.volverAlPanel()">Volver</button>
-        </nav>
-
+        <nav class="navbar navbar-dark bg-dark mb-4 px-3"><span class="navbar-brand fw-bold">NÓMINA</span><span id="contador-empresa-label" class="badge bg-warning text-dark ms-2"></span><button class="btn btn-sm btn-outline-light ms-auto" onclick="app.volverAlPanel()">Volver</button></nav>
         <div class="container-fluid px-4">
             <ul class="nav nav-tabs mb-4">
                 <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-valorizacion">💰 Valorización</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-resumen">📊 Resumen</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-config">⚙️ Parametrización</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-config">⚙️ Configuración</button></li>
             </ul>
-
             <div class="tab-content">
-                <div class="tab-pane fade show active" id="tab-valorizacion">
-                    <div class="card card-custom table-responsive">
-                        <table class="table table-sm table-hover mb-0" style="font-size: 0.85rem;">
-                            <thead class="table-light"><tr><th>Fecha</th><th>Trabajador</th><th>H.Total</th><th>Rec.Noc</th><th>Ext.Diu</th><th>Ext.Noc</th><th>Dom</th><th>Ext.Dom</th><th class="text-end">A PAGAR ($)</th><th>Acción</th></tr></thead>
-                            <tbody id="tabla-valorizacion"></tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="tab-pane fade" id="tab-resumen">
-                    <div class="card card-custom p-4">
-                        <h5 class="fw-bold mb-3">Consolidado por Empleado</h5>
-                        <table class="table table-bordered">
-                            <thead class="table-dark"><tr><th>Trabajador</th><th>Salario Base</th><th>Total Horas</th><th>Total Dinero ($)</th></tr></thead>
-                            <tbody id="tabla-resumen"></tbody>
-                        </table>
-                    </div>
-                </div>
-
+                <div class="tab-pane fade show active" id="tab-valorizacion"><div class="card card-custom table-responsive"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Fecha</th><th>Trabajador</th><th>Total</th><th>Ord</th><th>Rec.Noc</th><th>Ext.Diu</th><th>Ext.Noc</th><th>Dom</th><th>Ext.Dom</th><th class="text-end">A PAGAR</th><th>Ok</th></tr></thead><tbody id="tabla-valorizacion"></tbody></table></div></div>
+                <div class="tab-pane fade" id="tab-resumen"><div class="card card-custom p-4"><h5 class="fw-bold mb-3">Consolidado</h5><table class="table table-bordered table-sm"><thead class="table-dark"><tr><th>Trabajador</th><th>Rec.Noc</th><th>Ext.Diu</th><th>Ext.Noc</th><th>Dom</th><th>Ext.Dom</th><th>TOTAL $</th></tr></thead><tbody id="tabla-resumen"></tbody></table></div></div>
                 <div class="tab-pane fade" id="tab-config">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4 mb-3">
-                                <h6 class="fw-bold mb-3 border-bottom pb-2">Jornada Laboral (Horas Máximas Ordinarias)</h6>
-                                <div id="config-jornada-container">
-                                    </div>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="card card-custom p-4 text-center bg-light">
+                                <h6 class="fw-bold mb-3">📅 Gestión de Festivos</h6>
+                                <p class="small text-muted">Generación automática Ley 51 Colombia</p>
+                                <div class="input-group mb-3"><input type="number" id="input-anio-festivos" class="form-control" value="2026"><button class="btn btn-success" onclick="app.generarFestivos()">GENERAR</button></div>
+                                <hr>
+                                <div class="text-start small" style="max-height: 200px; overflow-y: auto;" id="lista-festivos-actuales"></div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4">
-                                <h6 class="fw-bold mb-3 border-bottom pb-2">Factores de Ley & Nómina</h6>
-                                <div class="row g-2">
-                                    <div class="col-6"><label class="small">Horas Base Mes</label><input id="cfg-base-mes" type="number" class="form-control form-control-sm"></div>
-                                    <div class="col-6"><label class="small">Recargo Nocturno</label><input id="cfg-rec-noc" type="number" class="form-control form-control-sm"></div>
-                                    <div class="col-6"><label class="small">Extra Diurna</label><input id="cfg-ext-diu" type="number" class="form-control form-control-sm"></div>
-                                    <div class="col-6"><label class="small">Extra Nocturna</label><input id="cfg-ext-noc" type="number" class="form-control form-control-sm"></div>
-                                    <div class="col-6"><label class="small">Dom/Fest Base</label><input id="cfg-dom-fes" type="number" class="form-control form-control-sm"></div>
-                                    <div class="col-6"><label class="small">Extra Dom Diu</label><input id="cfg-ext-dom" type="number" class="form-control form-control-sm"></div>
-                                </div>
-                                <button class="btn btn-primary w-100 mt-4" onclick="app.guardarConfiguracionAvanzada()">GUARDAR PARAMETROS</button>
-                            </div>
-                        </div>
+                        <div class="col-md-4"><div class="card card-custom p-4"><h6 class="fw-bold mb-3">Jornada Ordinaria</h6><div id="config-jornada-container"></div></div></div>
+                        <div class="col-md-4"><div class="card card-custom p-4"><h6 class="fw-bold mb-3">Factores de Ley</h6><div class="row g-2"><div class="col-6"><label class="small">Divisor Mes</label><input id="cfg-base-mes" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Rec. Noc</label><input id="cfg-rec-noc" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Ext. Diu</label><input id="cfg-ext-diu" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Ext. Noc</label><input id="cfg-ext-noc" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Dom Base</label><input id="cfg-dom-fes" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Ext Dom</label><input id="cfg-ext-dom" class="form-control form-control-sm"></div></div><button class="btn btn-primary w-100 mt-3" onclick="app.guardarConfiguracionAvanzada()">GUARDAR</button></div></div>
                     </div>
                 </div>
             </div>
@@ -130,27 +73,8 @@
     </div>
 
     <div id="view-digitador" class="app-view d-none">
-        <nav class="navbar navbar-dark bg-corporate px-3 shadow-sm">
-            <span class="navbar-brand fw-bold">VDH APP</span>
-            <div><span id="nav-empresa-label" class="badge bg-warning text-dark me-2"></span><button class="btn btn-sm btn-outline-light" onclick="app.logout()">Salir</button></div>
-        </nav>
-        <div class="container mt-4">
-            <div class="card card-custom p-4 mw-100 mx-auto" style="max-width: 600px;">
-                <h5 class="fw-bold text-secondary mb-3">Registrar Turno</h5>
-                <form id="form-horas">
-                    <div class="mb-3"><label class="small fw-bold">Fecha</label><input type="date" id="inputFecha" class="form-control" required></div>
-                    <div class="mb-3"><label class="small fw-bold">Trabajador</label><div class="input-group"><select id="inputTrabajador" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoTrabajador()">+</button></div></div>
-                    <div class="mb-3"><label class="small fw-bold">Cliente</label><div class="input-group"><select id="inputCliente" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoCliente()">+</button></div></div>
-                    <div class="mb-3"><label class="small fw-bold">Actividad</label><input id="inputActividad" class="form-control" required></div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6"><label class="small fw-bold">Entrada</label><input type="time" id="inputEntrada" class="form-control" required></div>
-                        <div class="col-6"><label class="small fw-bold">Salida</label><input type="time" id="inputSalida" class="form-control" required></div>
-                    </div>
-                    <div class="form-check mb-3"><input type="checkbox" id="checkAlmuerzo" class="form-check-input" checked><label class="small">Descontar Almuerzo</label></div>
-                    <button type="submit" class="btn btn-corporate w-100 py-2">GUARDAR</button>
-                </form>
-            </div>
-        </div>
+        <nav class="navbar navbar-dark bg-corporate px-3 shadow-sm"><span class="navbar-brand fw-bold">RELOJ VDH</span><div><span id="nav-empresa-label" class="badge bg-warning text-dark me-2"></span><button class="btn btn-sm btn-outline-light" onclick="app.logout()">Salir</button></div></nav>
+        <div class="container mt-4"><div class="card card-custom p-4 mw-100 mx-auto" style="max-width: 600px;"><h5 class="fw-bold text-secondary mb-3">Registrar Turno</h5><form id="form-horas"><div class="mb-3"><label class="small fw-bold">Fecha</label><input type="date" id="inputFecha" class="form-control" required></div><div class="mb-3"><label class="small fw-bold">Trabajador</label><div class="input-group"><select id="inputTrabajador" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoTrabajador()">+</button></div></div><div class="mb-3"><label class="small fw-bold">Cliente</label><div class="input-group"><select id="inputCliente" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoCliente()">+</button></div></div><div class="mb-3"><label class="small fw-bold">Actividad</label><input id="inputActividad" class="form-control" required></div><div class="row g-2 mb-3"><div class="col-6"><label class="small fw-bold">Entrada</label><input type="time" id="inputEntrada" class="form-control" required></div><div class="col-6"><label class="small fw-bold">Salida</label><input type="time" id="inputSalida" class="form-control" required></div></div><div class="form-check mb-3"><input type="checkbox" id="checkAlmuerzo" class="form-check-input" checked><label class="small">Descontar Almuerzo</label></div><button type="submit" class="btn btn-corporate w-100 py-2">GUARDAR</button></form></div></div>
     </div>
 
     <div class="modal fade" id="modalTrabajador" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-body"><input id="new-worker-name" class="form-control mb-2" placeholder="Nombre"><input id="new-worker-salary" type="number" class="form-control" placeholder="Salario Base"></div><div class="modal-footer"><button onclick="modals.guardarTrabajador()" class="btn btn-primary btn-sm">Guardar</button></div></div></div></div>
