@@ -1,271 +1,233 @@
 /**
- * VDH ENTERPRISE - APP.JS
- * Versión: 6.0.0 (Admin Dashboard Completo)
+ * VDH ENTERPRISE v7.0 - APP.JS
+ * Lógica de Negocio: Nómina y Parametrización
  */
-
 const CONFIG = {
-    // 🔴 PEGA LA URL DE LA VERSIÓN 6.0 AQUÍ
+    // 🔴 ACTUALIZA ESTA URL
     API_URL: "https://script.google.com/macros/s/AKfycbyubr3wxCftRobp80h3KUgzZymjqrnasvB5HaJfi81Hn3XDh0sP28uoIuOU3B46cPpP/exec"
 };
 
-const state = {
-    dbId: null,
-    role: null,
-    masterKey: null,
-    // Datos Admin
-    listaAdmin: []
-};
+const state = { dbId: null, role: null, masterKey: null, listaAdmin: [] };
 
-async function sendRequest(action, payload = {}) {
-    if (state.dbId) payload.dbId = state.dbId;
-    if (state.masterKey) payload.masterKey = state.masterKey;
-
+async function req(action, payload={}) {
+    if(state.dbId) payload.dbId = state.dbId;
+    if(state.masterKey) payload.masterKey = state.masterKey;
     try {
-        const response = await fetch(CONFIG.API_URL, { 
-            method: "POST", body: JSON.stringify({ action, payload }) 
-        });
-        const text = await response.text();
-        try { return JSON.parse(text); } 
-        catch (e) { throw new Error("Server Error: " + text); }
-    } catch (e) { throw e.message; }
+        const res = await fetch(CONFIG.API_URL, { method:"POST", body:JSON.stringify({action, payload}) });
+        const txt = await res.text();
+        return JSON.parse(txt);
+    } catch(e) { throw e.message; }
 }
 
 const app = {
-    init: function() {
-        console.log("VDH v6.0 Ready");
-        document.getElementById('btn-login-action')?.addEventListener('click', () => this.login());
-        document.getElementById('form-horas')?.addEventListener('submit', (e) => this.guardarHoras(e));
-        this.verificarSesion();
+    init: () => {
+        console.log("VDH v7 Started");
+        app.verificarSesion();
+    },
+    
+    verificarSesion: () => {
+        document.querySelectorAll('.app-view').forEach(e=>e.classList.add('d-none'));
+        document.getElementById('view-login').classList.remove('d-none');
+        app.loadLoginList();
     },
 
-    verificarSesion: function() {
-        this.mostrarPantalla('view-login');
-        this.cargarListaEmpresas();
+    loadLoginList: () => {
+        const s = document.getElementById('login-empresa-select');
+        s.innerHTML = '<option disabled selected>Cargando...</option>';
+        req("get_empresas_list").then(j => {
+            s.innerHTML = '<option value="" selected>Soy Administrador</option>';
+            if(j.data) j.data.forEach(e => s.innerHTML += `<option value="${e.id}">${e.nombre}</option>`);
+        });
     },
 
-    mostrarPantalla: function(viewId) {
-        document.querySelectorAll('.app-view').forEach(el => el.classList.add('d-none'));
-        document.getElementById(viewId)?.classList.remove('d-none');
-    },
-
-    toggleLoader: function(show) {
-        const el = document.getElementById('loader');
-        if(el) show ? el.classList.remove('d-none') : el.classList.add('d-none');
-    },
-
-    mostrarToast: function(msg) {
-        const el = document.getElementById('liveToast');
-        if(el) { document.getElementById('toast-message').innerText = msg; new bootstrap.Toast(el).show(); } 
-        else { alert(msg); }
-    },
-
-    // --- LOGIN ---
-    cargarListaEmpresas: function() {
-        this.toggleLoader(true);
-        const sel = document.getElementById('login-empresa-select');
-        sendRequest("get_empresas_list").then(json => {
-            sel.innerHTML = '<option value="" selected>Soy Administrador (Dejar vacío)</option>';
-            if(json.data) json.data.forEach(emp => {
-                let opt = document.createElement('option'); opt.value = emp.id; opt.text = emp.nombre; sel.appendChild(opt);
-            });
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    login: function() {
-        const empresaId = document.getElementById('login-empresa-select').value;
-        const token = document.getElementById('login-token').value;
-        if(!token) return alert("Ingrese el Token o Clave Maestra.");
-
-        this.toggleLoader(true);
-        sendRequest("login_empresa", { empresaId, token }).then(json => {
-            const data = json.data || json;
-            if(json.status === 'success') {
-                state.role = data.role;
-                
-                if (state.role === 'CLIENT') {
-                    state.dbId = data.dbId;
-                    document.getElementById('nav-empresa-label').innerText = data.nombre;
-                    this.mostrarPantalla('view-digitador');
-                    this.fetchMetadata();
-                } else if (state.role === 'ADMIN') {
-                    state.masterKey = token;
-                    this.mostrarPantalla('view-admin');
-                    state.listaAdmin = data.listaEmpresas;
-                    this.renderAdminDashboard();
+    login: () => {
+        const id = document.getElementById('login-empresa-select').value;
+        const tk = document.getElementById('login-token').value;
+        if(!tk) return alert("Falta contraseña");
+        
+        document.getElementById('loader').classList.remove('d-none');
+        req("login_empresa", {empresaId:id, token:tk}).then(j => {
+            const d = j.data || j;
+            if(j.status === 'success') {
+                state.role = d.role;
+                if(d.role === 'ADMIN') {
+                    state.masterKey = tk;
+                    state.listaAdmin = d.listaEmpresas;
+                    app.show('view-admin');
+                    app.renderAdminList();
+                } else {
+                    state.dbId = d.dbId;
+                    document.getElementById('nav-empresa-label').innerText = d.nombre;
+                    app.show('view-digitador');
+                    app.fetchMetadata();
                 }
-            } else { alert("❌ " + json.message); }
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    logout: function() {
-        state.dbId = null; state.role = null; state.masterKey = null;
-        document.getElementById('login-token').value = "";
-        this.mostrarPantalla('view-login');
-    },
-
-    volverAlPanel: function() {
-        if(state.role === 'ADMIN') {
-            state.dbId = null; // Soltar la empresa que estábamos viendo
-            this.mostrarPantalla('view-admin');
-        } else {
-            this.logout();
-        }
-    },
-
-    // --- GESTIÓN SUPER ADMIN ---
-    renderAdminDashboard: function() {
-        const list = document.getElementById('admin-company-list');
-        list.innerHTML = "";
-        state.listaAdmin.forEach(emp => {
-            list.innerHTML += `
-                <li class="list-group-item d-flex justify-content-between align-items-center company-row py-3">
-                    <div>
-                        <div class="fw-bold text-primary">${emp.nombre}</div>
-                        <small class="text-muted font-monospace bg-light px-2 rounded">Token: ${emp.token}</small>
-                    </div>
-                    <div class="btn-group">
-                        <button onclick="app.adminEntrarContador('${emp.dbId}', '${emp.nombre}')" class="btn btn-sm btn-outline-success" title="Entrar a Contabilidad"><i class="bi bi-box-arrow-in-right"></i> Entrar</button>
-                        <button onclick="app.adminAbrirEditToken('${emp.id}')" class="btn btn-sm btn-outline-secondary" title="Cambiar Contraseña"><i class="bi bi-key"></i></button>
-                        <button onclick="app.adminEliminarEmpresa('${emp.id}')" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                    </div>
-                </li>
-            `;
-        });
-    },
-
-    refreshAdminList: function() {
-        this.toggleLoader(true);
-        // Simulamos un relogin rápido para traer la lista fresca
-        sendRequest("login_empresa", { empresaId: "", token: state.masterKey }).then(json => {
-            const data = json.data || json;
-            state.listaAdmin = data.listaEmpresas;
-            this.renderAdminDashboard();
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    adminCrearEmpresa: function() {
-        const nombre = document.getElementById('admin-new-name').value;
-        const token = document.getElementById('admin-new-token').value;
-        if(!nombre || !token) return alert("Complete datos");
-        this.toggleLoader(true);
-        sendRequest("crear_empresa_saas", { nombre, tokenNuevo: token }).then(j => {
-            if(j.status === 'success') { this.mostrarToast("Empresa creada"); this.refreshAdminList(); }
-            else alert(j.message);
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    adminEliminarEmpresa: function(id) {
-        if(!confirm("⚠️ ¿ESTÁS SEGURO?\n\nEsto borrará la empresa del sistema. No se puede deshacer.")) return;
-        this.toggleLoader(true);
-        sendRequest("eliminar_empresa", { idEmpresa: id }).then(j => {
-            if(j.status==='success') { this.mostrarToast("Eliminada"); this.refreshAdminList(); }
-            else alert(j.message);
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    adminAbrirEditToken: function(id) {
-        document.getElementById('edit-id-empresa').value = id;
-        document.getElementById('edit-new-token').value = "";
-        new bootstrap.Modal(document.getElementById('modalEditToken')).show();
-    },
-
-    adminGuardarToken: function() {
-        const id = document.getElementById('edit-id-empresa').value;
-        const nuevo = document.getElementById('edit-new-token').value;
-        if(!nuevo) return alert("Escriba la nueva contraseña");
-        this.toggleLoader(true);
-        sendRequest("cambiar_token", { idEmpresa: id, nuevoToken: nuevo }).then(j => {
-            if(j.status==='success') {
-                this.mostrarToast("Contraseña actualizada");
-                bootstrap.Modal.getInstance(document.getElementById('modalEditToken')).hide();
-                this.refreshAdminList();
             } else alert(j.message);
-        }).finally(() => this.toggleLoader(false));
+        }).finally(()=>document.getElementById('loader').classList.add('d-none'));
     },
 
-    // --- MODO DIOS (Admin entra a Empresa) ---
-    adminEntrarContador: function(dbId, nombre) {
-        state.dbId = dbId; // ¡Magia! Ahora todas las peticiones van a esa empresa
-        document.getElementById('contador-empresa-label').innerText = nombre;
-        this.mostrarPantalla('view-contador');
-        this.contadorCargarDatos();
+    show: (id) => {
+        document.querySelectorAll('.app-view').forEach(e=>e.classList.add('d-none'));
+        document.getElementById(id).classList.remove('d-none');
     },
-
-    // --- CONTABILIDAD ---
-    contadorCargarDatos: function() {
-        this.toggleLoader(true);
-        sendRequest("obtener_reporte_contable").then(json => {
-            const data = json.data || json;
-            // 1. Llenar Tabla Pendientes
-            const tbody = document.getElementById('tabla-pendientes');
-            tbody.innerHTML = "";
-            if(data.pendientes.length === 0) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No hay horas pendientes de aprobación.</td></tr>';
-            
-            data.pendientes.forEach(p => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${p.fecha}</td>
-                        <td><div class="fw-bold">${p.trabajador}</div><small class="text-muted">ID: ${p.id}</small></td>
-                        <td class="text-center fw-bold text-primary">${p.total}h</td>
-                        <td><small>${p.detalle}</small></td>
-                        <td class="text-end">
-                            <button onclick="app.contadorAccionHora(${p.row}, 'aprobar')" class="btn btn-sm btn-success me-1"><i class="bi bi-check"></i></button>
-                            <button onclick="app.contadorAccionHora(${p.row}, 'rechazar')" class="btn btn-sm btn-danger"><i class="bi bi-x"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            // 2. Llenar Config
-            if(data.config) {
-                document.getElementById('conf-noc-ini').value = data.config.HORA_NOCTURNA_INICIO;
-                document.getElementById('conf-noc-fin').value = data.config.HORA_NOCTURNA_FIN;
-                document.getElementById('conf-rec-noc').value = data.config.RECARGO_NOCTURNO;
-            }
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    contadorAccionHora: function(row, action) {
-        const apiAction = action === 'aprobar' ? 'aprobar_hora' : 'rechazar_hora';
-        this.toggleLoader(true);
-        sendRequest(apiAction, { row: row }).then(() => {
-            this.contadorCargarDatos(); // Recargar tabla
-            this.mostrarToast(action === 'aprobar' ? "Hora Aprobada" : "Hora Rechazada");
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    contadorGuardarConfig: function() {
-        const data = {
-            hora_noc_ini: document.getElementById('conf-noc-ini').value,
-            hora_noc_fin: document.getElementById('conf-noc-fin').value,
-            recargo_noc: document.getElementById('conf-rec-noc').value
-        };
-        this.toggleLoader(true);
-        sendRequest("guardar_config", data).then(() => {
-            this.mostrarToast("Configuración guardada");
-        }).finally(() => this.toggleLoader(false));
-    },
-
-    // --- DIGITADOR ---
-    fetchMetadata: function() {
-        sendRequest("get_metadata").then(json => {
-            if(json.data) { this.llenarSelect('inputTrabajador', json.data.empleados); this.llenarSelect('inputCliente', json.data.clientes); }
+    logout: () => location.reload(),
+    
+    // ADMIN
+    renderAdminList: () => {
+        const l = document.getElementById('admin-company-list');
+        l.innerHTML = "";
+        state.listaAdmin.forEach(e => {
+            l.innerHTML += `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div><strong>${e.nombre}</strong> <small class="text-muted">Token: ${e.token}</small></div>
+                <div>
+                    <button class="btn btn-sm btn-success" onclick="app.adminEnter('${e.dbId}','${e.nombre}')">Entrar</button>
+                    <button class="btn btn-sm btn-danger" onclick="app.adminDel('${e.id}')">X</button>
+                </div>
+            </li>`;
         });
     },
-    llenarSelect: function(id, arr) { const s=document.getElementById(id); s.innerHTML='<option selected disabled>Seleccione...</option>'; if(arr)arr.forEach(x=>{let o=document.createElement('option');o.value=x;o.text=x;s.appendChild(o)}); },
-    guardarHoras: function(e) {
-        e.preventDefault(); this.toggleLoader(true);
-        const d = { registros: [{ trabajador:document.getElementById('inputTrabajador').value, fecha:document.getElementById('inputFecha').value, cliente:document.getElementById('inputCliente').value, trabajo:document.getElementById('inputActividad').value, entrada:document.getElementById('inputEntrada').value, salida:document.getElementById('inputSalida').value, almuerzo:document.getElementById('checkAlmuerzo').checked }] };
-        sendRequest("registrar_horas", d).then(j=>{ if(j.status==='success'){this.mostrarToast("Guardado");document.getElementById('form-horas').reset();}else alert(j.message); }).finally(()=>this.toggleLoader(false));
-    }
+    adminCrearEmpresa: () => {
+        const n = document.getElementById('admin-new-name').value;
+        const t = document.getElementById('admin-new-token').value;
+        if(n&&t) req("crear_empresa_saas", {nombre:n, tokenNuevo:t}).then(j=>{ 
+            if(j.status==='success') { alert("Creada"); app.logout(); }
+        });
+    },
+    adminDel: (id) => { if(confirm("¿Eliminar?")) req("eliminar_empresa", {idEmpresa:id}).then(()=>app.logout()); },
+    adminEnter: (dbId, nom) => {
+        state.dbId = dbId;
+        document.getElementById('contador-empresa-label').innerText = nom;
+        app.show('view-contador');
+        app.contadorLoad();
+    },
+    volverAlPanel: () => { state.dbId = null; app.show('view-admin'); },
+
+    // CONTADOR
+    contadorLoad: () => {
+        document.getElementById('loader').classList.remove('d-none');
+        req("obtener_reporte_contable").then(j => {
+            const d = j.data || j;
+            app.renderValuation(d.pendientes);
+            app.renderSummary(d.resumen);
+            app.renderConfig(d.config);
+        }).finally(()=>document.getElementById('loader').classList.add('d-none'));
+    },
+
+    renderValuation: (list) => {
+        const t = document.getElementById('tabla-valorizacion');
+        t.innerHTML = list.length ? "" : "<tr><td colspan='10' class='text-center'>Sin pendientes</td></tr>";
+        list.forEach(r => {
+            t.innerHTML += `
+            <tr>
+                <td>${r.fechaFmt}</td>
+                <td>${r.trabajador}</td>
+                <td>${r.total}</td>
+                <td>${r.h_rec_noc}</td>
+                <td>${r.h_ext_diu}</td>
+                <td>${r.h_ext_noc}</td>
+                <td>${r.h_dom}</td>
+                <td>${r.h_ext_dom}</td>
+                <td class="money-val text-end">$${r.valorTotal.toLocaleString()}</td>
+                <td><button onclick="app.aprobarHora(${r.row})" class="btn btn-sm btn-outline-success">✓</button></td>
+            </tr>`;
+        });
+    },
+
+    renderSummary: (list) => {
+        const t = document.getElementById('tabla-resumen');
+        t.innerHTML = "";
+        list.forEach(r => {
+            t.innerHTML += `<tr><td>${r.nombre}</td><td>$${r.salario.toLocaleString()}</td><td>${r.h_total.toFixed(2)}</td><td class="fw-bold text-success">$${r.din_total.toLocaleString()}</td></tr>`;
+        });
+    },
+
+    renderConfig: (cfg) => {
+        // Render Jornada Diaria
+        const days = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+        let j = {};
+        try { j = JSON.parse(cfg.REGLAS_JORNADA); } catch(e){ j={1:9,2:9,3:9,4:9,5:9,6:4,0:8}; } // Default
+        
+        const c = document.getElementById('config-jornada-container');
+        c.innerHTML = "";
+        days.forEach((d, i) => {
+            c.innerHTML += `
+            <div class="day-config-row">
+                <span class="small fw-bold">${d}</span>
+                <div class="input-group input-group-sm w-50">
+                    <span class="input-group-text">Max Hrs</span>
+                    <input type="number" class="form-control inp-jornada" data-day="${i}" value="${j[i]||0}">
+                </div>
+            </div>`;
+        });
+
+        // Render Factores
+        document.getElementById('cfg-base-mes').value = cfg.HORAS_BASE_MES || 240;
+        document.getElementById('cfg-rec-noc').value = cfg.FACTOR_REC_NOC || 0.35;
+        document.getElementById('cfg-ext-diu').value = cfg.FACTOR_EXT_DIU || 1.25;
+        document.getElementById('cfg-ext-noc').value = cfg.FACTOR_EXT_NOC || 1.75;
+        document.getElementById('cfg-dom-fes').value = cfg.FACTOR_DOM_FES || 1.75;
+        document.getElementById('cfg-ext-dom').value = cfg.FACTOR_EXT_DOM || 2.00;
+    },
+
+    guardarConfiguracionAvanzada: () => {
+        const inputs = document.querySelectorAll('.inp-jornada');
+        const jornada = {};
+        inputs.forEach(i => jornada[i.dataset.day] = Number(i.value));
+
+        const payload = {
+            jornada: jornada,
+            factores: {
+                HORAS_BASE_MES: document.getElementById('cfg-base-mes').value,
+                FACTOR_REC_NOC: document.getElementById('cfg-rec-noc').value,
+                FACTOR_EXT_DIU: document.getElementById('cfg-ext-diu').value,
+                FACTOR_EXT_NOC: document.getElementById('cfg-ext-noc').value,
+                FACTOR_DOM_FES: document.getElementById('cfg-dom-fes').value,
+                FACTOR_EXT_DOM: document.getElementById('cfg-ext-dom').value
+            }
+        };
+        req("guardar_config_avanzada", payload).then(j => alert("Guardado"));
+    },
+
+    aprobarHora: (r) => req("aprobar_hora", {row:r}).then(()=>app.contadorLoad()),
+
+    // DIGITADOR
+    fetchMetadata: () => req("get_metadata").then(j => { 
+        const d=j.data||j; 
+        ['inputTrabajador','inputCliente'].forEach((id,i) => {
+            const s=document.getElementById(id); s.innerHTML='<option selected disabled>...</option>';
+            (i===0?d.empleados:d.clientes).forEach(x=>s.innerHTML+=`<option>${x}</option>`);
+        });
+    }),
+    
+    // Submit digitador event listener is set in init via HTML ID binding if element exists
 };
+
+document.getElementById('form-horas')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const d = {registros:[{
+        fecha:document.getElementById('inputFecha').value,
+        trabajador:document.getElementById('inputTrabajador').value,
+        cliente:document.getElementById('inputCliente').value,
+        trabajo:document.getElementById('inputActividad').value,
+        entrada:document.getElementById('inputEntrada').value,
+        salida:document.getElementById('inputSalida').value,
+        almuerzo:document.getElementById('checkAlmuerzo').checked
+    }]};
+    req("registrar_horas", d).then(j => { alert("Guardado"); document.getElementById('form-horas').reset(); });
+});
 
 const modals = {
     nuevoTrabajador: () => new bootstrap.Modal(document.getElementById('modalTrabajador')).show(),
-    guardarTrabajador: () => { const n=document.getElementById('new-worker-name').value; const s=document.getElementById('new-worker-salary').value; if(n&&s){ app.toggleLoader(true); sendRequest("crear_trabajador",{nombre:n,salario:s}).then(()=>{app.mostrarToast("Creado");bootstrap.Modal.getInstance(document.getElementById('modalTrabajador')).hide();app.fetchMetadata();}).finally(()=>app.toggleLoader(false)); } },
+    guardarTrabajador: () => {
+        const n=document.getElementById('new-worker-name').value;
+        const s=document.getElementById('new-worker-salary').value;
+        if(n&&s) req("crear_trabajador", {nombre:n, salario:s}).then(()=>{ alert("Creado"); app.fetchMetadata(); });
+    },
     nuevoCliente: () => new bootstrap.Modal(document.getElementById('modalCliente')).show(),
-    guardarCliente: () => { const n=document.getElementById('new-client-name').value; if(n){ app.toggleLoader(true); sendRequest("crear_cliente",{nombre:n}).then(()=>{app.mostrarToast("Creado");bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();app.fetchMetadata();}).finally(()=>app.toggleLoader(false)); } }
+    guardarCliente: () => {
+        const n=document.getElementById('new-client-name').value;
+        if(n) req("crear_cliente", {nombre:n}).then(()=>{ alert("Creado"); app.fetchMetadata(); });
+    }
 };
 
-window.app = app; window.modals = modals;
-document.addEventListener('DOMContentLoaded', () => app.init());
+document.addEventListener('DOMContentLoaded', app.init);
