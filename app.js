@@ -1,6 +1,7 @@
-/** APP.JS V12.1 - CORS FIX & DIAGNOSTIC */
+
+/** APP.JS V12.2 - CORS BYPASS */
 const CONFIG = {
-    // 🔴 PEGA AQUÍ TU NUEVA URL (La que generaste con acceso 'Cualquier persona')
+    // 🔴 PEGA LA URL QUE ACABAS DE PROBAR EN EL NAVEGADOR
     API: "https://script.google.com/macros/s/AKfycbzROLanuU7hLHFg-bep2gWBWLaGVp6xrAZEn1G_9mU2q38ESpZ0PmBoxL0EXOm_PnKH/exec"
 };
 
@@ -10,56 +11,77 @@ const api = async (act, pl={}) => {
     if(S.dbId) pl.dbId = S.dbId;
     if(S.master) pl.masterKey = S.master;
     
-    // Configuración para evitar bloqueos de redirección
+    // TRUCO ANTI-CORS:
+    // Usamos 'text/plain' en lugar de 'application/json'.
+    // Apps Script recibe el texto y lo parseamos manual en el backend.
+    // Esto evita la solicitud 'OPTIONS' (Pre-flight) que causa el error 404/CORS.
+    
     const options = {
         method: "POST",
-        body: JSON.stringify({action:act, payload:pl})
-        // No agregamos headers manuales para que Google maneje el CORS simple
+        redirect: "follow", 
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify({ action: act, payload: pl })
     };
 
     try {
         const r = await fetch(CONFIG.API, options);
         
-        if (!r.ok) {
-            throw new Error(`Error HTTP: ${r.status} ${r.statusText}`);
-        }
-
+        if (!r.ok) throw new Error(`Error HTTP ${r.status}`);
+        
         const t = await r.text();
         try {
             return JSON.parse(t);
         } catch (e) {
-            console.error("Respuesta no es JSON:", t);
-            throw new Error("El servidor no respondió datos válidos.");
+            console.error("Respuesta invalida:", t);
+            throw new Error("Error de comunicación con Google.");
         }
     } catch(e) { 
-        console.error("FALLO DE RED:", e);
-        // Si es fallo de fetch (CORS o Red), mostramos alerta crítica
-        if(e.message.includes("Failed to fetch")) {
-            alert("⛔ ERROR CRÍTICO DE CONEXIÓN\n\nEl sistema no puede conectar con Google.\n\nCAUSA PROBABLE:\nNo configuraste 'Quién tiene acceso: Cualquier persona' al implementar el script.\n\nSOLUCIÓN:\nVe a Apps Script > Implementar > Nueva Implementación > Acceso: Cualquier persona.");
-        }
-        return {status:"error", message: e.message}; 
+        console.error(e); 
+        // Si falla la conexión inicial de login, mostramos en el select
+        if (act === 'get_public_list') return { status: 'error', message: 'Offline' };
+        
+        toast("Error de Red: Verifica tu conexión", "bg-danger");
+        return { status: "error", message: e.message }; 
     }
 };
 
-const toast = (m) => { document.getElementById('toast-msg').innerText=m; new bootstrap.Toast(document.getElementById('liveToast')).show(); };
+const toast = (m, bg="bg-success") => { 
+    const el = document.getElementById('liveToast');
+    if(el) {
+        el.className = `toast align-items-center text-white border-0 ${bg}`;
+        const body = document.getElementById('toast-msg');
+        if(body) body.innerText = m;
+        new bootstrap.Toast(el).show();
+    } else {
+        alert(m);
+    }
+};
 
 const app = {
     init: () => {
-        if(S.role) app.setupInterface(S.viewRole);
-        else { app.switchView('view-login'); app.loadLogin(); }
+        console.log("VDH v12.2 Init");
+        if(S.role) {
+            app.setupInterface(S.viewRole);
+        } else {
+            app.switchView('view-login');
+            app.loadLogin();
+        }
     },
 
     loadLogin: () => {
         const s = document.getElementById('login-empresa');
-        s.innerHTML = '<option disabled selected>Conectando...</option>';
+        if(!s) return;
+        s.innerHTML = '<option disabled selected>Conectando servidor...</option>';
         
         api("get_public_list").then(j => {
-            if(j.status === 'error') {
-                s.innerHTML = '<option disabled selected>⚠️ Error de Conexión</option>';
-                return;
+            if (j.status === 'error') {
+                s.innerHTML = '<option disabled selected>⚠️ Sin Conexión (Revisa URL)</option>';
+            } else {
+                s.innerHTML = '<option value="">Soy Administrador</option>';
+                if(j.data) j.data.forEach(e => s.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
             }
-            s.innerHTML = '<option value="">Soy Administrador</option>';
-            if(j.data) j.data.forEach(e => s.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
         });
     },
 
@@ -86,7 +108,7 @@ const app = {
         }).finally(()=>document.getElementById('loader').classList.add('d-none'));
     },
 
-    logout: () => { sessionStorage.clear(); location.reload(); },
+    logout: () => { sessionStorage.clear(); S={}; location.reload(); },
 
     switchView: (id) => {
         document.querySelectorAll('.app-view').forEach(e=>e.classList.add('d-none'));
@@ -110,14 +132,14 @@ const app = {
             menu.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('admin')"><i class="bi bi-buildings"></i> Empresas</button>`;
         }
         
-        // Load default module
-        const firstBtn = document.querySelector('.menu-btn');
-        if(firstBtn) firstBtn.click();
+        // Simular clic en el primero para cargar
+        const first = menu.querySelector('.menu-btn');
+        if(first) app.loadModule(role === 'ADMIN' ? 'admin' : (role === 'DIGITADOR' ? 'registro' : 'finanzas'));
     },
 
     loadModule: (mod) => {
         document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('active'));
-        if(event && event.target) event.target.classList.add('active');
+        if(event && event.target) event.target.closest('button').classList.add('active');
         
         const content = document.getElementById('panel-content');
         const tpl = document.getElementById('tpl-'+mod);
@@ -162,7 +184,7 @@ const app = {
             if(id) pl.idRegistro = id; 
             
             api(act, id ? {idRegistro:id, datos:pl} : {registros:[pl]}).then(() => {
-                toast("Guardado");
+                toast(id ? "Actualizado" : "Guardado");
                 app.cancelEdit();
                 app.loadGridDigitador();
             });
@@ -175,6 +197,7 @@ const app = {
             if(!t) return;
             t.innerHTML="";
             if(!j.data || !j.data.data) return;
+            
             const data = j.data.data.slice(0,50);
             window.lastData = data; 
             data.forEach(r => {
@@ -196,6 +219,7 @@ const app = {
         document.getElementById('reg-salida').value = r.salida;
         document.getElementById('reg-almuerzo').checked = r.almuerzo;
         document.getElementById('btn-save').innerText = "ACTUALIZAR";
+        document.getElementById('btn-save').classList.replace('btn-gold','btn-warning');
         document.getElementById('btn-cancel').classList.remove('d-none');
     },
 
@@ -203,6 +227,7 @@ const app = {
         document.getElementById('form-registro').reset();
         document.getElementById('reg-id').value = "";
         document.getElementById('btn-save').innerText = "GUARDAR";
+        document.getElementById('btn-save').classList.replace('btn-warning','btn-gold');
         document.getElementById('btn-cancel').classList.add('d-none');
     },
 
@@ -213,12 +238,12 @@ const app = {
         api("get_finance").then(j => {
             const d = j.data;
             if(!d) return;
-            const t = document.getElementById('grid-finanzas'); t.innerHTML="";
-            d.pendientes.forEach(r => {
+            const t = document.getElementById('grid-finanzas'); if(t) t.innerHTML="";
+            if(d.pendientes) d.pendientes.forEach(r => {
                 t.innerHTML += `<tr><td>${r.fecha}</td><td>${r.trab}</td><td>${r.total}</td><td>${r.ord}</td><td>${r.rn}</td><td>${r.ed}</td><td>${r.en}</td><td>${r.df}</td><td>${r.edom}</td><td class="text-end fw-bold text-success">$${r.valor.toLocaleString()}</td></tr>`;
             });
-            const tr = document.getElementById('grid-resumen'); tr.innerHTML="";
-            d.resumen.forEach(r => {
+            const tr = document.getElementById('grid-resumen'); if(tr) tr.innerHTML="";
+            if(d.resumen) d.resumen.forEach(r => {
                 tr.innerHTML += `<tr><td>${r.nombre}</td><td>${r.horas.toFixed(2)}h</td><td class="text-success fw-bold">$${r.dinero.toLocaleString()}</td></tr>`;
             });
         });
