@@ -2,7 +2,7 @@
 /** APP.JS V12.2 - CORS BYPASS */
 const CONFIG = {
     // 🔴 PEGA LA URL QUE ACABAS DE PROBAR EN EL NAVEGADOR
-    API: "https://script.google.com/macros/s/AKfycbzROLanuU7hLHFg-bep2gWBWLaGVp6xrAZEn1G_9mU2q38ESpZ0PmBoxL0EXOm_PnKH/exec"
+    API: "https://script.google.com/macros/s/AKfycbylf2bAabbTly6RM4_NuqxGuSGbkxGfrGuCXYEYuzWa6UQ5lXoDMJ-y3nv0FGADPyeP/exec"
 };
 
 let S = JSON.parse(sessionStorage.getItem('vdh_v12')) || { dbId: null, role: null, viewRole: null };
