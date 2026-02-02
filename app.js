@@ -1,10 +1,10 @@
 /**
  * VDH CONTABLE SYSTEM - FRONTEND SAAS
- * Versión: 4.5.0 (Con Diagnóstico Visual de Errores)
+ * Versión: 4.6.0 (Producción Final - Login Fix + Diagnóstico)
  */
 
 const CONFIG = {
-    // 🔴 ASEGÚRATE QUE ESTA SEA LA URL DE LA "NUEVA VERSIÓN"
+    // URL de tu última implementación
     API_URL: "https://script.google.com/macros/s/AKfycbyubr3wxCftRobp80h3KUgzZymjqrnasvB5HaJfi81Hn3XDh0sP28uoIuOU3B46cPpP/exec" 
 };
 
@@ -55,7 +55,7 @@ async function sendRequest(action, payload = {}) {
 // --- APP PRINCIPAL ---
 const app = {
     init: function() {
-        console.log("VDH SaaS Iniciado v4.5");
+        console.log("VDH SaaS Iniciado v4.6");
         
         const btnLogin = document.getElementById('btn-login-action');
         if(btnLogin) btnLogin.addEventListener('click', () => this.login());
@@ -83,10 +83,17 @@ const app = {
     },
 
     mostrarToast: function(msg, type='success') {
-        alert((type === 'error' ? '❌ ' : '✅ ') + msg);
+        const toastEl = document.getElementById('liveToast');
+        if(toastEl) {
+            document.getElementById('toast-message').innerText = msg;
+            const bsToast = new bootstrap.Toast(toastEl);
+            bsToast.show();
+        } else {
+            alert((type === 'error' ? '❌ ' : '✅ ') + msg);
+        }
     },
 
-    // --- MÓDULO DE LOGIN (AQUÍ ESTÁ EL DIAGNÓSTICO) ---
+    // --- MÓDULO DE LOGIN ---
 
     cargarListaEmpresas: function() {
         this.toggleLoader(true);
@@ -139,27 +146,48 @@ const app = {
         this.toggleLoader(true);
         sendRequest("login_empresa", { empresaId, token }).then(json => {
             if(json.status === 'success') {
-                state.dbId = json.data.dbId;
-                state.empresaNombre = json.data.nombre;
-                document.getElementById('nav-empresa-label').innerText = state.empresaNombre;
+                // --- CORRECCIÓN CRÍTICA DE DBID ---
+                // Verifica si viene directo o dentro de 'data'
+                const payload = json.data || json; 
+
+                if (!payload.dbId) {
+                    alert("Error Técnico: El servidor no devolvió el ID de base de datos.");
+                    return;
+                }
+
+                state.dbId = payload.dbId;
+                state.empresaNombre = payload.nombre || "Empresa";
+                
+                // Actualizar UI
+                const label = document.getElementById('nav-empresa-label');
+                if(label) label.innerText = state.empresaNombre;
+                
                 this.mostrarPantalla('view-digitador');
                 this.fetchMetadata();
             } else {
-                alert("❌ " + json.message);
+                alert("❌ Acceso denegado: " + json.message);
             }
-        }).catch(e => alert(e))
-          .finally(() => this.toggleLoader(false));
+        }).catch(e => {
+            console.error(e);
+            alert("Error al procesar login: " + e);
+        })
+        .finally(() => this.toggleLoader(false));
     },
 
     logout: function() {
         state.dbId = null;
+        state.empresaNombre = null;
         document.getElementById('login-token').value = "";
         this.mostrarPantalla('view-login');
     },
 
     // --- OPERACIÓN ---
     irADigitador: function() { this.mostrarPantalla('view-digitador'); },
-    irAContador: function() { this.mostrarPantalla('view-contador'); },
+    
+    irAContador: function() { 
+        this.mostrarPantalla('view-contador');
+        // Opcional: Cargar config si no se cargó antes
+    },
 
     fetchMetadata: function() {
         this.toggleLoader(true);
@@ -205,22 +233,107 @@ const app = {
             if(json.status === 'success') {
                 this.mostrarToast("Registro guardado exitosamente");
                 document.getElementById('form-horas').reset();
-            } else { alert("Error: " + json.message); }
+                // Reset fecha a hoy
+                document.getElementById('inputFecha').valueAsDate = new Date();
+            } else { 
+                alert("Error: " + json.message); 
+            }
         }).finally(() => this.toggleLoader(false));
     },
 
-    renderConfig: function(cfg) { /* Lógica de config igual que antes */ },
-    guardarConfiguracion: function() { /* Lógica igual que antes */ }
+    // --- MÓDULO DE CONFIGURACIÓN ---
+    renderConfig: function(cfg) {
+        if(!cfg) return;
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if(el) el.value = val;
+        };
+        setVal('conf-noc-ini', cfg.HORA_NOCTURNA_INICIO);
+        setVal('conf-noc-fin', cfg.HORA_NOCTURNA_FIN);
+        setVal('conf-rec-noc', cfg.RECARGO_NOCTURNO);
+    },
+
+    guardarConfiguracion: function() {
+        this.toggleLoader(true);
+        const data = {
+            hora_noc_ini: document.getElementById('conf-noc-ini').value,
+            hora_noc_fin: document.getElementById('conf-noc-fin').value,
+            recargo_noc: document.getElementById('conf-rec-noc').value
+        };
+        sendRequest("guardar_config", data).then(json => {
+            if(json.status === 'success') {
+                this.mostrarToast("Parámetros actualizados para: " + state.empresaNombre);
+            } else {
+                alert("Error: " + json.message);
+            }
+        }).finally(() => this.toggleLoader(false));
+    }
 };
 
-// Modales (Igual que antes)
+// --- MODALES (Restaurados Completos) ---
 const modals = {
-    nuevoTrabajador: () => new bootstrap.Modal(document.getElementById('modalTrabajador')).show(),
-    guardarTrabajador: () => { /* ... Lógica existente ... */ },
-    nuevoCliente: () => new bootstrap.Modal(document.getElementById('modalCliente')).show(),
-    guardarCliente: () => { /* ... Lógica existente ... */ }
+    nuevoTrabajador: () => {
+        const el = document.getElementById('modalTrabajador');
+        if(el) new bootstrap.Modal(el).show();
+    },
+    
+    guardarTrabajador: () => {
+        const nombre = document.getElementById('new-worker-name').value;
+        const salario = document.getElementById('new-worker-salary').value;
+        if(nombre && salario) {
+            app.toggleLoader(true);
+            sendRequest("crear_trabajador", { nombre, salario }).then(json => {
+                if(json.status === 'success') {
+                    app.mostrarToast("Trabajador creado");
+                    const el = document.getElementById('modalTrabajador');
+                    const modal = bootstrap.Modal.getInstance(el);
+                    if(modal) modal.hide();
+                    
+                    // Limpiar inputs
+                    document.getElementById('new-worker-name').value = "";
+                    document.getElementById('new-worker-salary').value = "";
+
+                    app.fetchMetadata(); // Recargar listas
+                } else {
+                    alert("Error: " + json.message);
+                }
+            }).finally(() => app.toggleLoader(false));
+        } else {
+            alert("Complete todos los campos");
+        }
+    },
+
+    nuevoCliente: () => {
+        const el = document.getElementById('modalCliente');
+        if(el) new bootstrap.Modal(el).show();
+    },
+
+    guardarCliente: () => {
+        const nombre = document.getElementById('new-client-name').value;
+        if(nombre) {
+            app.toggleLoader(true);
+            sendRequest("crear_cliente", { nombre }).then(json => {
+                if(json.status === 'success') {
+                    app.mostrarToast("Cliente creado");
+                    const el = document.getElementById('modalCliente');
+                    const modal = bootstrap.Modal.getInstance(el);
+                    if(modal) modal.hide();
+
+                    document.getElementById('new-client-name').value = "";
+                    app.fetchMetadata(); // Recargar listas
+                } else {
+                    alert("Error: " + json.message);
+                }
+            }).finally(() => app.toggleLoader(false));
+        } else {
+            alert("Ingrese el nombre del cliente");
+        }
+    }
 };
 
+// Exponer globalmente
 window.app = app;
 window.modals = modals;
+
+// Iniciar al cargar
 document.addEventListener('DOMContentLoaded', () => app.init());
