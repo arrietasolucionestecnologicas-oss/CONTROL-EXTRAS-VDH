@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VDH Enterprise v8</title>
+    <title>VDH Enterprise v8.5</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
@@ -64,7 +64,7 @@
     <div id="view-digitador" class="app-view d-none">
         <nav class="navbar navbar-dark bg-corporate px-3 shadow-sm"><span class="navbar-brand fw-bold">VDH APP</span><div><span id="nav-empresa-label" class="badge bg-warning text-dark me-2"></span><button class="btn btn-sm btn-outline-light" onclick="app.logout()">Salir</button></div></nav>
         <div class="container mt-4">
-            <ul class="nav nav-tabs mb-3">
+            <ul class="nav nav-tabs mb-3" id="digitador-tabs">
                 <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#dig-form">📝 Registro</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dig-historial" onclick="app.cargarHistorialDigitador()">🕒 Historial</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dig-equipo" onclick="app.fetchMetadata()">👥 Equipo</button></li>
@@ -73,20 +73,24 @@
                 <div class="tab-pane fade show active" id="dig-form">
                     <div class="card card-custom p-4 mw-100 mx-auto" style="max-width: 600px;">
                         <form id="form-horas">
+                            <input type="hidden" id="record-id"> <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold text-secondary m-0">Registrar Turno</h5>
+                                <button type="button" id="btn-cancel-edit" class="btn btn-sm btn-danger d-none" onclick="app.cancelarEdicion()">Cancelar Edición</button>
+                            </div>
                             <div class="mb-3"><label class="small fw-bold">Fecha</label><input type="date" id="inputFecha" class="form-control" required></div>
                             <div class="mb-3"><label class="small fw-bold">Trabajador</label><div class="input-group"><select id="inputTrabajador" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoTrabajador()">+</button></div></div>
                             <div class="mb-3"><label class="small fw-bold">Cliente</label><div class="input-group"><select id="inputCliente" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoCliente()">+</button></div></div>
                             <div class="mb-3"><label class="small fw-bold">Actividad</label><input id="inputActividad" class="form-control" required></div>
                             <div class="row g-2 mb-3"><div class="col-6"><label class="small fw-bold">Entrada</label><input type="time" id="inputEntrada" class="form-control" required></div><div class="col-6"><label class="small fw-bold">Salida</label><input type="time" id="inputSalida" class="form-control" required></div></div>
                             <div class="form-check mb-3"><input type="checkbox" id="checkAlmuerzo" class="form-check-input" checked><label class="small">Descontar Almuerzo</label></div>
-                            <button type="submit" class="btn btn-corporate w-100 py-2">GUARDAR</button>
+                            <button type="submit" id="btn-submit-horas" class="btn btn-corporate w-100 py-2">GUARDAR</button>
                         </form>
                     </div>
                 </div>
                 <div class="tab-pane fade" id="dig-historial">
                     <div class="card card-custom p-0 table-responsive">
-                        <table class="table table-sm table-striped mb-0 small">
-                            <thead class="table-dark"><tr><th>Fecha</th><th>Nombre</th><th>Cliente</th><th>Horas</th><th>Estado</th></tr></thead>
+                        <table class="table table-sm table-striped mb-0 small align-middle">
+                            <thead class="table-dark"><tr><th>Fecha</th><th>Nombre</th><th>Cliente</th><th>Horas</th><th>Acciones</th></tr></thead>
                             <tbody id="tabla-historial-digitador"></tbody>
                         </table>
                     </div>
