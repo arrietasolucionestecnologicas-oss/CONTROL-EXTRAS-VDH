@@ -1,48 +1,46 @@
-
-/** APP.JS V12.2 - CORS BYPASS */
+/** APP.JS V14.0 - CONEXIÓN ESTÁNDAR */
 const CONFIG = {
-    // 🔴 PEGA LA URL QUE ACABAS DE PROBAR EN EL NAVEGADOR
-    API: "https://script.google.com/macros/s/AKfycbylf2bAabbTly6RM4_NuqxGuSGbkxGfrGuCXYEYuzWa6UQ5lXoDMJ-y3nv0FGADPyeP/exec"
+    // 🔴 PEGA TU NUEVA URL AQUÍ (V14.0)
+    API: "https://script.google.com/macros/s/AKfycbylf2bAabbTly6RM4_NuqxGuSGbkxGfrGuCXYEYuzWa6UQ5lXoDMJ-y3nv0FGADPyeP/exec" 
 };
 
-let S = JSON.parse(sessionStorage.getItem('vdh_v12')) || { dbId: null, role: null, viewRole: null };
+// Cargar estado
+let S = JSON.parse(sessionStorage.getItem('vdh_v14')) || { dbId: null, role: null, viewRole: null };
 
 const api = async (act, pl={}) => {
+    // Inyectar credenciales si existen
     if(S.dbId) pl.dbId = S.dbId;
     if(S.master) pl.masterKey = S.master;
     
-    // TRUCO ANTI-CORS:
-    // Usamos 'text/plain' en lugar de 'application/json'.
-    // Apps Script recibe el texto y lo parseamos manual en el backend.
-    // Esto evita la solicitud 'OPTIONS' (Pre-flight) que causa el error 404/CORS.
-    
+    // Método estándar robusto
     const options = {
         method: "POST",
-        redirect: "follow", 
-        headers: {
-            "Content-Type": "text/plain;charset=utf-8"
-        },
+        // 'application/json' dispara CORS pre-flight, pero como pusimos "Cualquier usuario",
+        // Google lo maneja bien SIEMPRE Y CUANDO el script no falle internamente.
+        // Como blindamos API.gs, esto debe funcionar.
         body: JSON.stringify({ action: act, payload: pl })
     };
 
     try {
+        // Fetch sin headers manuales para dejar que el navegador maneje el Content-Type simple si es posible
+        // o añadir explícitamente si se requiere. Google Apps Script prefiere "text/plain" a veces
+        // para evitar OPTIONS, así que usaremos un truco híbrido:
+        // Enviamos stringify pero sin header 'application/json' forzado.
         const r = await fetch(CONFIG.API, options);
         
-        if (!r.ok) throw new Error(`Error HTTP ${r.status}`);
+        if (!r.ok) throw new Error(`HTTP ${r.status} - ${r.statusText}`);
         
         const t = await r.text();
         try {
             return JSON.parse(t);
         } catch (e) {
-            console.error("Respuesta invalida:", t);
-            throw new Error("Error de comunicación con Google.");
+            console.error("Respuesta no es JSON:", t);
+            throw new Error("El servidor respondió basura HTML (Posible error de script no capturado).");
         }
     } catch(e) { 
-        console.error(e); 
-        // Si falla la conexión inicial de login, mostramos en el select
-        if (act === 'get_public_list') return { status: 'error', message: 'Offline' };
-        
-        toast("Error de Red: Verifica tu conexión", "bg-danger");
+        console.error("RED:", e); 
+        if(act === 'get_public_list') return { status:'error', message: 'Sin conexión al servidor.' };
+        toast("Error de Conexión", "bg-danger"); 
         return { status: "error", message: e.message }; 
     }
 };
@@ -51,33 +49,26 @@ const toast = (m, bg="bg-success") => {
     const el = document.getElementById('liveToast');
     if(el) {
         el.className = `toast align-items-center text-white border-0 ${bg}`;
-        const body = document.getElementById('toast-msg');
-        if(body) body.innerText = m;
+        const b = document.getElementById('toast-msg'); if(b) b.innerText=m;
         new bootstrap.Toast(el).show();
-    } else {
-        alert(m);
-    }
+    } else alert(m);
 };
 
 const app = {
     init: () => {
-        console.log("VDH v12.2 Init");
-        if(S.role) {
-            app.setupInterface(S.viewRole);
-        } else {
-            app.switchView('view-login');
-            app.loadLogin();
-        }
+        console.log("VDH v14 Init");
+        if(S.role) app.setupInterface(S.viewRole);
+        else { app.switchView('view-login'); app.loadLogin(); }
     },
 
     loadLogin: () => {
         const s = document.getElementById('login-empresa');
         if(!s) return;
-        s.innerHTML = '<option disabled selected>Conectando servidor...</option>';
-        
+        s.innerHTML = '<option disabled selected>Conectando...</option>';
         api("get_public_list").then(j => {
-            if (j.status === 'error') {
-                s.innerHTML = '<option disabled selected>⚠️ Sin Conexión (Revisa URL)</option>';
+            if(j.status === 'error') {
+                s.innerHTML = '<option disabled selected>⚠️ Offline</option>';
+                alert("No se pudo conectar. Verifica la URL en app.js y los permisos de implementación.");
             } else {
                 s.innerHTML = '<option value="">Soy Administrador</option>';
                 if(j.data) j.data.forEach(e => s.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
@@ -88,27 +79,22 @@ const app = {
     login: () => {
         const u = document.getElementById('login-empresa').value;
         const p = document.getElementById('login-pass').value;
-        const roleType = document.querySelector('input[name="role_radio"]:checked').value; 
-
-        document.getElementById('loader').classList.remove('d-none');
+        const rt = document.querySelector('input[name="role_radio"]:checked').value;
         
+        document.getElementById('loader').classList.remove('d-none');
         api("login", {user:u, pass:p}).then(j => {
             const d = j.data||j;
             if(j.status==='success') {
-                S.role = d.role; 
-                if(d.role === 'ADMIN') {
-                    S.master = p; S.viewRole = 'ADMIN';
-                } else {
-                    S.dbId = d.dbId; S.nombre = d.nombre;
-                    S.viewRole = roleType; 
-                }
-                sessionStorage.setItem('vdh_v12', JSON.stringify(S));
+                S.role = d.role;
+                if(d.role === 'ADMIN') { S.master=p; S.viewRole='ADMIN'; }
+                else { S.dbId=d.dbId; S.nombre=d.nombre; S.viewRole=rt; }
+                sessionStorage.setItem('vdh_v14', JSON.stringify(S));
                 app.setupInterface(S.viewRole);
             } else alert(j.message);
         }).finally(()=>document.getElementById('loader').classList.add('d-none'));
     },
 
-    logout: () => { sessionStorage.clear(); S={}; location.reload(); },
+    logout: () => { sessionStorage.clear(); location.reload(); },
 
     switchView: (id) => {
         document.querySelectorAll('.app-view').forEach(e=>e.classList.add('d-none'));
@@ -118,57 +104,39 @@ const app = {
     setupInterface: (role) => {
         app.switchView('view-app');
         document.getElementById('user-label').innerText = S.nombre || "Gerencia";
+        const m = document.getElementById('menu-container'); m.innerHTML="";
         
-        const menu = document.getElementById('menu-container');
-        menu.innerHTML = "";
-
-        if(role === 'DIGITADOR') {
-            menu.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
-        } else if (role === 'CONTADOR') {
-            menu.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('finanzas')"><i class="bi bi-cash-coin"></i> Finanzas</button>`;
-            menu.innerHTML += `<button class="menu-btn" onclick="app.loadModule('config')"><i class="bi bi-gear"></i> Configuración</button>`;
-            menu.innerHTML += `<button class="menu-btn" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro (Audit)</button>`;
-        } else if (role === 'ADMIN') {
-            menu.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('admin')"><i class="bi bi-buildings"></i> Empresas</button>`;
-        }
+        if(role==='DIGITADOR') m.innerHTML += `<button class="menu-btn active" onclick="app.nav('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
+        else if(role==='CONTADOR') {
+            m.innerHTML += `<button class="menu-btn active" onclick="app.nav('finanzas')"><i class="bi bi-cash"></i> Finanzas</button>`;
+            m.innerHTML += `<button class="menu-btn" onclick="app.nav('config')"><i class="bi bi-gear"></i> Configuración</button>`;
+            m.innerHTML += `<button class="menu-btn" onclick="app.nav('registro')"><i class="bi bi-eye"></i> Auditoría</button>`;
+        } else if(role==='ADMIN') m.innerHTML += `<button class="menu-btn active" onclick="app.nav('admin')"><i class="bi bi-buildings"></i> Empresas</button>`;
         
-        // Simular clic en el primero para cargar
-        const first = menu.querySelector('.menu-btn');
-        if(first) app.loadModule(role === 'ADMIN' ? 'admin' : (role === 'DIGITADOR' ? 'registro' : 'finanzas'));
+        const first = m.querySelector('.menu-btn'); if(first) app.nav(role==='ADMIN'?'admin':(role==='DIGITADOR'?'registro':'finanzas'));
     },
 
-    loadModule: (mod) => {
+    nav: (mod) => {
         document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('active'));
         if(event && event.target) event.target.closest('button').classList.add('active');
-        
-        const content = document.getElementById('panel-content');
-        const tpl = document.getElementById('tpl-'+mod);
-        if(!tpl) return;
-        content.innerHTML = "";
-        content.appendChild(tpl.content.cloneNode(true));
-
-        if(mod === 'registro') app.modRegistro();
-        if(mod === 'finanzas') app.modFinanzas();
-        if(mod === 'config') app.modConfig();
-        if(mod === 'admin') app.modAdmin();
+        const c = document.getElementById('panel-content'); c.innerHTML="";
+        c.appendChild(document.getElementById('tpl-'+mod).content.cloneNode(true));
+        if(mod==='registro') app.modRegistro();
+        if(mod==='finanzas') app.modFinanzas();
+        if(mod==='config') app.modConfig();
+        if(mod==='admin') app.modAdmin();
     },
 
     // --- MODULO REGISTRO ---
     modRegistro: () => {
         api("get_full_data").then(j => {
-            const d = j.data;
-            if(!d) return;
-            const fill = (id, arr) => {
-                const s = document.querySelector(`#${id}`); if(!s)return; s.innerHTML="";
-                arr.forEach(x => s.innerHTML+=`<option>${x.nombre||x}</option>`);
-            };
-            fill('reg-trabajador', d.empleados);
-            fill('reg-cliente', d.clientes);
-            app.loadGridDigitador();
+            const d=j.data; if(!d)return;
+            const f=(id,l)=>{const s=document.querySelector(`#${id}`);if(s){s.innerHTML="";l.forEach(x=>s.innerHTML+=`<option>${x.nombre||x}</option>`)}};
+            f('reg-trabajador', d.empleados); f('reg-cliente', d.clientes);
+            app.loadGrid();
         });
-
-        const form = document.getElementById('form-registro');
-        if(form) form.onsubmit = (e) => {
+        const frm = document.getElementById('form-registro');
+        if(frm) frm.onsubmit = (e) => {
             e.preventDefault();
             const id = document.getElementById('reg-id').value;
             const pl = {
@@ -181,83 +149,65 @@ const app = {
                 almuerzo: document.getElementById('reg-almuerzo').checked
             };
             const act = id ? "edit_entry" : "save_entry";
-            if(id) pl.idRegistro = id; 
-            
-            api(act, id ? {idRegistro:id, datos:pl} : {registros:[pl]}).then(() => {
-                toast(id ? "Actualizado" : "Guardado");
-                app.cancelEdit();
-                app.loadGridDigitador();
-            });
+            if(id) pl.idRegistro = id;
+            api(act, id ? {idRegistro:id, datos:pl} : {registros:[pl]}).then(()=>{ toast("Guardado"); app.cancelEdit(); app.loadGrid(); });
         };
     },
-
-    loadGridDigitador: () => {
+    loadGrid: () => {
         api("get_grid").then(j => {
-            const t = document.getElementById('grid-digitador'); 
-            if(!t) return;
-            t.innerHTML="";
-            if(!j.data || !j.data.data) return;
-            
-            const data = j.data.data.slice(0,50);
-            window.lastData = data; 
+            const t = document.getElementById(S.viewRole==='DIGITADOR'?'grid-digitador':'grid-digitador'); // Reusar logica si existe
+            // Nota: En tpl-registro de digitador el ID es grid-digitador
+            const el = document.getElementById('grid-digitador');
+            if(!el) return;
+            el.innerHTML="";
+            const data = (j.data && j.data.data) ? j.data.data.slice(0,50) : [];
+            window.lastData = data;
             data.forEach(r => {
-                t.innerHTML += `<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.total}h</td>
-                <td><button class="btn btn-sm btn-outline-primary" onclick="app.edit('${r.id}')"><i class="bi bi-pencil"></i></button> 
-                <button class="btn btn-sm btn-outline-danger" onclick="app.del('${r.id}')"><i class="bi bi-trash"></i></button></td></tr>`;
+                el.innerHTML += `<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.total}h</td><td>
+                <button class="btn btn-sm btn-outline-primary" onclick="app.edit('${r.id}')">✏️</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="app.del('${r.id}')">🗑️</button></td></tr>`;
             });
         });
     },
-
     edit: (id) => {
-        const r = window.lastData.find(x => x.id === id);
-        document.getElementById('reg-id').value = id;
-        document.getElementById('reg-fecha').value = r.fechaRaw;
-        document.getElementById('reg-trabajador').value = r.trabajador;
-        document.getElementById('reg-cliente').value = r.cliente;
-        document.getElementById('reg-actividad').value = r.actividad;
-        document.getElementById('reg-entrada').value = r.entrada;
-        document.getElementById('reg-salida').value = r.salida;
-        document.getElementById('reg-almuerzo').checked = r.almuerzo;
-        document.getElementById('btn-save').innerText = "ACTUALIZAR";
-        document.getElementById('btn-save').classList.replace('btn-gold','btn-warning');
+        const r = window.lastData.find(x=>x.id===id);
+        document.getElementById('reg-id').value=id;
+        document.getElementById('reg-fecha').value=r.fechaRaw;
+        document.getElementById('reg-trabajador').value=r.trabajador;
+        document.getElementById('reg-cliente').value=r.cliente;
+        document.getElementById('reg-actividad').value=r.actividad;
+        document.getElementById('reg-entrada').value=r.entrada;
+        document.getElementById('reg-salida').value=r.salida;
+        document.getElementById('reg-almuerzo').checked=r.almuerzo;
+        document.getElementById('btn-save').innerText="ACTUALIZAR";
         document.getElementById('btn-cancel').classList.remove('d-none');
     },
-
     cancelEdit: () => {
         document.getElementById('form-registro').reset();
-        document.getElementById('reg-id').value = "";
-        document.getElementById('btn-save').innerText = "GUARDAR";
-        document.getElementById('btn-save').classList.replace('btn-warning','btn-gold');
+        document.getElementById('reg-id').value="";
+        document.getElementById('btn-save').innerText="GUARDAR";
         document.getElementById('btn-cancel').classList.add('d-none');
     },
-
-    del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{ toast("Eliminado"); app.loadGridDigitador(); }); },
+    del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{toast("Borrado");app.loadGrid()}); },
 
     // --- MODULO FINANZAS ---
     modFinanzas: () => {
         api("get_finance").then(j => {
-            const d = j.data;
-            if(!d) return;
-            const t = document.getElementById('grid-finanzas'); if(t) t.innerHTML="";
-            if(d.pendientes) d.pendientes.forEach(r => {
-                t.innerHTML += `<tr><td>${r.fecha}</td><td>${r.trab}</td><td>${r.total}</td><td>${r.ord}</td><td>${r.rn}</td><td>${r.ed}</td><td>${r.en}</td><td>${r.df}</td><td>${r.edom}</td><td class="text-end fw-bold text-success">$${r.valor.toLocaleString()}</td></tr>`;
-            });
-            const tr = document.getElementById('grid-resumen'); if(tr) tr.innerHTML="";
-            if(d.resumen) d.resumen.forEach(r => {
-                tr.innerHTML += `<tr><td>${r.nombre}</td><td>${r.horas.toFixed(2)}h</td><td class="text-success fw-bold">$${r.dinero.toLocaleString()}</td></tr>`;
-            });
+            const d=j.data; if(!d) return;
+            const t=document.getElementById('grid-finanzas'); t.innerHTML="";
+            if(d.pendientes) d.pendientes.forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trab}</td><td>${r.total}</td><td>${r.ord}</td><td>${r.rn}</td><td>${r.ed}</td><td>${r.en}</td><td>${r.df}</td><td>${r.edom}</td><td class="text-end fw-bold text-success">$${r.valor.toLocaleString()}</td></tr>`);
+            const tr=document.getElementById('grid-resumen'); tr.innerHTML="";
+            if(d.resumen) d.resumen.forEach(r => tr.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.horas.toFixed(2)}</td><td class="text-success fw-bold">$${r.dinero.toLocaleString()}</td></tr>`);
         });
     },
 
-    // --- MODULO CONFIG ---
+    // --- CONFIG ---
     modConfig: () => {
         api("get_full_data").then(j => {
-            const c = j.data.config;
-            const days=["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
+            const c=j.data.config; const days=["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
             let r={1:9,2:9,3:9,4:9,5:9,6:4,0:8}; try{r=JSON.parse(c.REGLAS_JORNADA)}catch(e){}
-            const div = document.getElementById('cfg-jornada'); div.innerHTML="";
+            const div=document.getElementById('cfg-jornada'); div.innerHTML="";
             days.forEach((d,i)=>div.innerHTML+=`<div class="d-flex justify-content-between mb-2"><span>${d}</span><input type="number" class="form-control form-control-sm w-25 dr" data-d="${i}" value="${r[i]||0}"></div>`);
-            
             document.getElementById('cfg-base').value=c.HORAS_BASE_MES||240;
             document.getElementById('cfg-rn').value=c.FACTOR_REC_NOC||0.35;
             document.getElementById('cfg-ed').value=c.FACTOR_EXT_DIU||1.25;
@@ -268,7 +218,7 @@ const app = {
     },
     saveConfig: () => {
         const j={}; document.querySelectorAll('.dr').forEach(i=>j[i.dataset.d]=Number(i.value));
-        const pl = { jornada:j, factores:{
+        const pl={jornada:j, factores:{
             HORAS_BASE_MES:document.getElementById('cfg-base').value, FACTOR_REC_NOC:document.getElementById('cfg-rn').value,
             FACTOR_EXT_DIU:document.getElementById('cfg-ed').value, FACTOR_EXT_NOC:document.getElementById('cfg-en').value,
             FACTOR_DOM_FES:document.getElementById('cfg-df').value, FACTOR_EXT_DOM:document.getElementById('cfg-edom').value
@@ -279,10 +229,8 @@ const app = {
     // --- ADMIN ---
     modAdmin: () => {
         api("get_public_list").then(j => {
-            const t = document.getElementById('adm-list'); t.innerHTML="";
-            j.data.forEach(e => {
-                t.innerHTML += `<tr><td>${e.nombre}</td><td><small>${e.id}</small></td><td><button class="btn btn-sm btn-danger" onclick="app.admDel('${e.id}')">X</button></td></tr>`;
-            });
+            const t=document.getElementById('adm-list'); t.innerHTML="";
+            if(j.data) j.data.forEach(e => t.innerHTML+=`<tr><td>${e.nombre}</td><td><small>${e.token}</small></td><td><button class="btn btn-sm btn-danger" onclick="app.admDel('${e.id}')">X</button></td></tr>`);
         });
     },
     admCreate: () => {
