@@ -3,115 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VDH Enterprise v8.5</title>
+    <title>VDH Software v11</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        :root { --vdh-primary: #0b1e47; --vdh-accent: #ffc107; }
-        body { background-color: #f0f2f5; font-family: system-ui; }
+        :root { --primary: #0b1e47; --accent: #ffc107; }
+        body { background: #f4f6f9; font-family: 'Segoe UI', system-ui; font-size: 0.9rem; user-select: none; }
         .d-none { display: none !important; }
-        .bg-corporate { background-color: var(--vdh-primary) !important; color: white; }
-        .btn-corporate { background-color: var(--vdh-primary); color: white; border: none; }
-        .bg-admin { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; }
-        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .bg-primary-dark { background-color: var(--primary) !important; color: white; }
+        .card { border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-radius: 8px; }
+        .nav-link { color: #555; font-weight: 600; cursor: pointer; }
+        .nav-link.active { color: var(--primary) !important; border-bottom: 2px solid var(--accent); background: transparent !important; }
+        .grid-table { font-size: 0.8rem; }
+        .grid-table th { background: #e9ecef; position: sticky; top: 0; z-index: 1; }
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .param-group { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #eee; }
+        .btn-fab { position: fixed; bottom: 20px; right: 20px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
-    <div id="loader" class="d-none"><div class="spinner-border text-primary"></div><h6 class="text-muted fw-bold">Cargando...</h6></div>
+    <div id="loader" class="d-none"><div class="spinner-border text-primary"></div></div>
 
-    <div id="view-login" class="container mt-5 pt-5 app-view">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-custom p-4 text-center">
-                    <div class="mb-4"><i class="bi bi-building-fill-lock" style="font-size: 3rem; color: var(--vdh-primary);"></i></div>
-                    <h3 class="fw-bold" style="color: var(--vdh-primary)">VDH SYSTEM</h3>
-                    <div class="form-floating mb-3 text-start"><select id="login-empresa-select" class="form-select"></select><label>Empresa</label></div>
-                    <div class="form-floating mb-4 text-start"><input type="password" id="login-token" class="form-control" placeholder="Pass"><label>Contraseña</label></div>
-                    <button onclick="app.login()" class="btn btn-corporate w-100 py-2 fw-bold">INGRESAR</button>
-                </div>
-            </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 10000;">
+        <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+            <div class="d-flex"><div class="toast-body" id="toast-msg">Acción Exitosa</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
         </div>
     </div>
 
-    <div id="view-admin" class="app-view d-none">
-        <nav class="navbar navbar-dark bg-admin mb-4 px-3 shadow"><span class="navbar-brand fw-bold">GERENCIA</span><button class="btn btn-sm btn-outline-light" onclick="app.logout()">Salir</button></nav>
-        <div class="container"><div class="row g-4"><div class="col-md-4"><div class="card card-custom p-3"><h6 class="fw-bold text-success mb-3">Nueva Empresa</h6><input id="admin-new-name" class="form-control mb-2" placeholder="Nombre"><input id="admin-new-token" class="form-control mb-3" placeholder="Clave"><button class="btn btn-success w-100" onclick="app.adminCrearEmpresa()">CREAR</button></div></div><div class="col-md-8"><div class="card card-custom p-0" style="max-height:600px;overflow-y:auto"><div class="card-header bg-white fw-bold">Empresas <button onclick="app.refreshAdminList()" class="btn btn-sm btn-light float-end">↻</button></div><ul class="list-group list-group-flush" id="admin-company-list"></ul></div></div></div></div>
-    </div>
-
-    <div id="view-contador" class="app-view d-none">
-        <nav class="navbar navbar-dark bg-dark mb-4 px-3"><span class="navbar-brand fw-bold">NÓMINA</span><span id="contador-empresa-label" class="badge bg-warning text-dark ms-2"></span><button class="btn btn-sm btn-outline-light ms-auto" onclick="app.volverAlPanel()">Volver</button></nav>
-        <div class="container-fluid px-4">
-            <ul class="nav nav-tabs mb-4">
-                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-valorizacion">Valorización</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-resumen">Resumen</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-config">Configuración</button></li>
-            </ul>
-            <div class="tab-content">
-                <div class="tab-pane fade show active" id="tab-valorizacion"><div class="card card-custom table-responsive"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Fecha</th><th>Trabajador</th><th>Total</th><th>Ord</th><th>Rec.Noc</th><th>Ext.Diu</th><th>Ext.Noc</th><th>Dom</th><th>Ext.Dom</th><th class="text-end">A PAGAR</th><th>Ok</th></tr></thead><tbody id="tabla-valorizacion"></tbody></table></div></div>
-                <div class="tab-pane fade" id="tab-resumen"><div class="card card-custom p-4"><table class="table table-bordered table-sm"><thead class="table-dark"><tr><th>Trabajador</th><th>Rec.Noc</th><th>Ext.Diu</th><th>Ext.Noc</th><th>Dom</th><th>Ext.Dom</th><th>TOTAL $</th></tr></thead><tbody id="tabla-resumen"></tbody></table></div></div>
-                <div class="tab-pane fade" id="tab-config">
-                    <div class="row g-4">
-                        <div class="col-md-4"><div class="card card-custom p-4 bg-light"><h6 class="fw-bold mb-3">Festivos</h6><div class="input-group mb-3"><input type="number" id="input-anio-festivos" class="form-control" value="2026"><button class="btn btn-success" onclick="app.generarFestivos()">GENERAR</button></div><div class="small" style="max-height:200px;overflow-y:auto" id="lista-festivos-actuales"></div></div></div>
-                        <div class="col-md-4"><div class="card card-custom p-4"><h6 class="fw-bold mb-3">Jornada</h6><div id="config-jornada-container"></div></div></div>
-                        <div class="col-md-4"><div class="card card-custom p-4"><h6 class="fw-bold mb-3">Factores</h6><div class="row g-2"><div class="col-6"><label class="small">Divisor</label><input id="cfg-base-mes" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Rec.Noc</label><input id="cfg-rec-noc" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Ext.Diu</label><input id="cfg-ext-diu" class="form-control form-control-sm"></div><div class="col-6"><label class="small">Ext.Noc</label><input id="cfg-ext-noc" class="form-control form-control-sm"></div><div class="col-6"><label class="small">DomBase</label><input id="cfg-dom-fes" class="form-control form-control-sm"></div><div class="col-6"><label class="small">ExtDom</label><input id="cfg-ext-dom" class="form-control form-control-sm"></div></div><button class="btn btn-primary w-100 mt-3" onclick="app.guardarConfiguracionAvanzada()">GUARDAR</button></div></div>
-                    </div>
-                </div>
-            </div>
+    <div id="view-login" class="app-view container d-flex justify-content-center align-items-center vh-100">
+        <div class="card p-4 text-center" style="width: 350px;">
+            <div class="mb-4"><i class="bi bi-building-fill-lock text-primary" style="font-size: 3rem;"></i></div>
+            <h4 class="fw-bold text-primary mb-4">VDH SOFTWARE</h4>
+            <select id="login-empresa" class="form-select mb-3"></select>
+            <input type="password" id="login-pass" class="form-control mb-3" placeholder="Contraseña / Token">
+            <button onclick="app.login()" class="btn btn-primary w-100 fw-bold py-2">ENTRAR AL SISTEMA</button>
         </div>
     </div>
 
-    <div id="view-digitador" class="app-view d-none">
-        <nav class="navbar navbar-dark bg-corporate px-3 shadow-sm"><span class="navbar-brand fw-bold">VDH APP</span><div><span id="nav-empresa-label" class="badge bg-warning text-dark me-2"></span><button class="btn btn-sm btn-outline-light" onclick="app.logout()">Salir</button></div></nav>
-        <div class="container mt-4">
-            <ul class="nav nav-tabs mb-3" id="digitador-tabs">
-                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#dig-form">📝 Registro</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dig-historial" onclick="app.cargarHistorialDigitador()">🕒 Historial</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dig-equipo" onclick="app.fetchMetadata()">👥 Equipo</button></li>
-            </ul>
-            <div class="tab-content">
-                <div class="tab-pane fade show active" id="dig-form">
-                    <div class="card card-custom p-4 mw-100 mx-auto" style="max-width: 600px;">
-                        <form id="form-horas">
-                            <input type="hidden" id="record-id"> <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold text-secondary m-0">Registrar Turno</h5>
-                                <button type="button" id="btn-cancel-edit" class="btn btn-sm btn-danger d-none" onclick="app.cancelarEdicion()">Cancelar Edición</button>
-                            </div>
-                            <div class="mb-3"><label class="small fw-bold">Fecha</label><input type="date" id="inputFecha" class="form-control" required></div>
-                            <div class="mb-3"><label class="small fw-bold">Trabajador</label><div class="input-group"><select id="inputTrabajador" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoTrabajador()">+</button></div></div>
-                            <div class="mb-3"><label class="small fw-bold">Cliente</label><div class="input-group"><select id="inputCliente" class="form-select" required></select><button type="button" class="btn btn-outline-secondary" onclick="modals.nuevoCliente()">+</button></div></div>
-                            <div class="mb-3"><label class="small fw-bold">Actividad</label><input id="inputActividad" class="form-control" required></div>
-                            <div class="row g-2 mb-3"><div class="col-6"><label class="small fw-bold">Entrada</label><input type="time" id="inputEntrada" class="form-control" required></div><div class="col-6"><label class="small fw-bold">Salida</label><input type="time" id="inputSalida" class="form-control" required></div></div>
-                            <div class="form-check mb-3"><input type="checkbox" id="checkAlmuerzo" class="form-check-input" checked><label class="small">Descontar Almuerzo</label></div>
-                            <button type="submit" id="btn-submit-horas" class="btn btn-corporate w-100 py-2">GUARDAR</button>
-                        </form>
-                    </div>
+    <div id="view-app" class="app-view d-none">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary-dark px-3 shadow-sm">
+            <span class="navbar-brand fw-bold"><i class="bi bi-grid-3x3-gap-fill me-2"></i>VDH SYSTEM</span>
+            <span class="navbar-text ms-3 text-warning fw-bold bg-white bg-opacity-10 px-3 rounded-pill" id="app-user-label"></span>
+            <div class="ms-auto">
+                <button class="btn btn-sm btn-outline-light" onclick="app.logout()"><i class="bi bi-box-arrow-right me-1"></i>Salir</button>
+            </div>
+        </nav>
+
+        <div class="container-fluid mt-3">
+            <ul class="nav nav-tabs border-bottom-0" id="main-tabs">
+                </ul>
+            <div class="tab-content pt-3" id="tab-content">
                 </div>
-                <div class="tab-pane fade" id="dig-historial">
-                    <div class="card card-custom p-0 table-responsive">
-                        <table class="table table-sm table-striped mb-0 small align-middle">
-                            <thead class="table-dark"><tr><th>Fecha</th><th>Nombre</th><th>Cliente</th><th>Horas</th><th>Acciones</th></tr></thead>
-                            <tbody id="tabla-historial-digitador"></tbody>
+        </div>
+    </div>
+
+    <template id="tpl-registro">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="card p-3 h-100">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-pencil-square me-2"></i>Nuevo Turno</h6>
+                    <form id="form-registro">
+                        <label class="small fw-bold text-muted">Fecha</label><input type="date" id="reg-fecha" class="form-control mb-2" required>
+                        <label class="small fw-bold text-muted">Trabajador</label><select id="reg-trabajador" class="form-select mb-2" required></select>
+                        <label class="small fw-bold text-muted">Cliente</label><select id="reg-cliente" class="form-select mb-2" required></select>
+                        <label class="small fw-bold text-muted">Actividad</label><input id="reg-actividad" class="form-control mb-2" required>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6"><label class="small fw-bold text-muted">Entrada</label><input type="time" id="reg-entrada" class="form-control" required></div>
+                            <div class="col-6"><label class="small fw-bold text-muted">Salida</label><input type="time" id="reg-salida" class="form-control" required></div>
+                        </div>
+                        <div class="form-check mb-3"><input type="checkbox" id="reg-almuerzo" class="form-check-input" checked><label class="small">Descontar Almuerzo (1h)</label></div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">GUARDAR REGISTRO</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card p-0 h-100">
+                    <div class="card-header bg-white fw-bold"><i class="bi bi-clock-history me-2"></i>Últimos Movimientos</div>
+                    <div style="height: 450px; overflow: auto;">
+                        <table class="table table-sm table-striped grid-table m-0 align-middle">
+                            <thead class="table-dark"><tr><th>Fecha</th><th>Trabajador</th><th>H.Total</th><th>Estado</th><th>Acción</th></tr></thead>
+                            <tbody id="grid-historial-simple"></tbody>
                         </table>
                     </div>
                 </div>
-                <div class="tab-pane fade" id="dig-equipo">
-                    <div class="card card-custom p-4">
-                        <h6 class="fw-bold mb-3">Actualizar Salarios</h6>
-                        <div class="input-group mb-3">
-                            <select id="edit-worker-select" class="form-select"></select>
-                            <input id="edit-worker-new-salary" type="number" class="form-control" placeholder="Nuevo Salario">
-                            <button class="btn btn-primary" onclick="app.actualizarSalario()">Actualizar</button>
-                        </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="tpl-config">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="param-group h-100">
+                    <h6 class="fw-bold border-bottom pb-2 text-primary">Jornada Laboral</h6>
+                    <div id="cfg-jornada-list"></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="param-group h-100">
+                    <h6 class="fw-bold border-bottom pb-2 text-primary">Factores de Nómina</h6>
+                    <div class="row g-2">
+                        <div class="col-6"><label class="small">Divisor Mes</label><input id="cfg-base" type="number" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="small">Recargo Noc</label><input id="cfg-rn" type="number" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="small">Extra Diu</label><input id="cfg-ed" type="number" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="small">Extra Noc</label><input id="cfg-en" type="number" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="small">Dom Base</label><input id="cfg-df" type="number" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="small">Extra Dom</label><input id="cfg-edom" type="number" class="form-control form-control-sm"></div>
                     </div>
+                    <button class="btn btn-success w-100 fw-bold mt-4" onclick="app.saveConfig()">GUARDAR PARÁMETROS</button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="param-group h-100">
+                    <h6 class="fw-bold border-bottom pb-2 text-primary">Festivos Configurados</h6>
+                    <div id="cfg-festivos-list" style="max-height: 300px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
-    </div>
+    </template>
 
-    <div class="modal fade" id="modalTrabajador" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-body"><input id="new-worker-name" class="form-control mb-2" placeholder="Nombre"><input id="new-worker-salary" type="number" class="form-control" placeholder="Salario Base"></div><div class="modal-footer"><button onclick="modals.guardarTrabajador()" class="btn btn-primary btn-sm">Guardar</button></div></div></div></div>
-    <div class="modal fade" id="modalCliente" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-body"><input id="new-client-name" class="form-control" placeholder="Cliente"></div><div class="modal-footer"><button onclick="modals.guardarCliente()" class="btn btn-primary btn-sm">Guardar</button></div></div></div></div>
-    <div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="liveToast" class="toast align-items-center text-white bg-primary border-0" role="alert"><div class="d-flex"><div class="toast-body" id="toast-message"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>
+    <template id="tpl-grid">
+        <div class="card p-0 shadow-sm" style="height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-primary"><i class="bi bi-table me-2"></i>Base de Datos Maestra</span>
+                <button class="btn btn-sm btn-outline-primary" onclick="app.gridLoad()"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+            </div>
+            <div style="overflow: auto; flex: 1;">
+                <table class="table table-bordered table-hover grid-table mb-0">
+                    <thead class="table-dark">
+                        <tr><th>ID</th><th>FECHA</th><th>TRABAJADOR</th><th>CLIENTE</th><th>ENT</th><th>SAL</th><th>TOT</th><th>ORD</th><th>R.NOC</th><th>DOM</th><th>EXT.D</th><th>EXT.N</th><th>ESTADO</th><th>ACCION</th></tr>
+                    </thead>
+                    <tbody id="grid-total-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="tpl-admin">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card p-4 h-100">
+                    <h5 class="fw-bold text-success mb-3"><i class="bi bi-plus-circle me-2"></i>Nueva Empresa</h5>
+                    <input id="adm-name" class="form-control mb-2" placeholder="Nombre Comercial">
+                    <input id="adm-token" class="form-control mb-3" placeholder="Asignar Token">
+                    <button class="btn btn-primary w-100 fw-bold" onclick="app.admCreate()">CREAR ENTORNO</button>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card p-0 h-100">
+                    <div class="card-header bg-white fw-bold"><i class="bi bi-buildings me-2"></i>Empresas Activas</div>
+                    <ul class="list-group list-group-flush" id="adm-list" style="max-height: 500px; overflow: auto;"></ul>
+                </div>
+            </div>
+        </div>
+    </template>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js"></script>
