@@ -1,7 +1,7 @@
 /** APP.JS V12.1 - CORS FIX & DIAGNOSTIC */
 const CONFIG = {
     // 🔴 PEGA AQUÍ TU NUEVA URL (La que generaste con acceso 'Cualquier persona')
-    API: "https://script.google.com/macros/s/AKfycbyubr3wxCftRobp80h3KUgzZymjqrnasvB5HaJfi81Hn3XDh0sP28uoIuOU3B46cPpP/exec"
+    API: "https://script.google.com/macros/s/AKfycbzROLanuU7hLHFg-bep2gWBWLaGVp6xrAZEn1G_9mU2q38ESpZ0PmBoxL0EXOm_PnKH/exec"
 };
 
 let S = JSON.parse(sessionStorage.getItem('vdh_v12')) || { dbId: null, role: null, viewRole: null };
