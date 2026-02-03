@@ -1,10 +1,10 @@
-/** APP.JS V24.0 (FINAL) */
+/** APP.JS V26.0 (FINAL) */
 const CONFIG = {
-    // 🔴 PEGA LA NUEVA URL
+    // 🔴 PEGA LA NUEVA URL DEL DEPLOY AQUÍ
     API: "https://script.google.com/macros/s/AKfycbwkFaP_G5bSYnalTk4w92OZ3FuSBMaSTF3x2z5TDGGqiR0R1Oa6V4hlxmcH0XvDTzyl/exec"
 };
 
-let S = JSON.parse(sessionStorage.getItem('vdh_v24')) || { dbId: null, role: null };
+let S = JSON.parse(sessionStorage.getItem('vdh_v26')) || { dbId: null, role: null };
 
 const api = async (act, pl={}) => {
     if(S.dbId) pl.dbId = S.dbId;
@@ -38,7 +38,7 @@ const app = {
             const d = j.data||j;
             if(j.status==='success') {
                 S = { role: d.role, dbId: d.dbId, nombre: d.nombre, isMaster: d.isMaster };
-                sessionStorage.setItem('vdh_v24', JSON.stringify(S));
+                sessionStorage.setItem('vdh_v26', JSON.stringify(S));
                 app.setupInterface();
             } else alert(j.message);
         }).finally(()=>document.getElementById('loader').classList.add('d-none'));
@@ -67,6 +67,8 @@ const app = {
         if(m==='config') app.modConfig();
         if(m==='empresas') app.modAdmin();
     },
+
+    // --- DIGITADOR (EDICIÓN V25 IMPLEMENTADA) ---
     modRegistro: () => {
         api("get_full_data").then(j => {
             const d=j.data; const fill=(id,arr)=>{ document.querySelectorAll(id).forEach(s=>{s.innerHTML=""; arr.forEach(x=>s.innerHTML+=`<option>${x.nombre||x}</option>`)})};
@@ -75,19 +77,55 @@ const app = {
         });
         document.getElementById('form-registro').onsubmit=(e)=>{
             e.preventDefault();
+            const idEdit = document.getElementById('reg-id').value;
             const pl = { fecha:document.getElementById('reg-fecha').value, trabajador:document.getElementById('reg-trabajador').value, cliente:document.getElementById('reg-cliente').value, trabajo:document.getElementById('reg-actividad').value, entrada:document.getElementById('reg-entrada').value, salida:document.getElementById('reg-salida').value, almuerzo:document.getElementById('reg-almuerzo').checked };
-            api("save_entry", {registros:[pl]}).then(()=>{ alert("Guardado"); app.loadGridDig(); });
+            
+            const action = idEdit ? "edit_entry" : "save_entry";
+            if(idEdit) pl.idRegistro = idEdit;
+
+            api(action, idEdit ? {idRegistro:idEdit, datos:pl} : {registros:[pl]}).then(()=>{ 
+                toast(idEdit ? "Actualizado" : "Guardado"); 
+                app.cancelEdit();
+                app.loadGridDig(); 
+            });
         };
     },
     loadGridDig: () => {
         api("get_grid").then(j => {
-            const t = document.getElementById('grid-digitador'); t.innerHTML="";
-            j.data.data.slice(0,50).forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.total}</td><td>${r.estado}</td></tr>`);
+            const t = document.getElementById('grid-digitador'); if(!t) return;
+            t.innerHTML=""; 
+            window.lastData = j.data.data.slice(0,50); // Guardar para edición
+            window.lastData.forEach(r => {
+                let btns = r.estado === 'PENDIENTE' 
+                    ? `<button class="btn btn-sm btn-outline-primary py-0" onclick="app.edit('${r.id}')">✏️</button> <button class="btn btn-sm btn-outline-danger py-0" onclick="app.del('${r.id}')">🗑️</button>`
+                    : `<span class="badge bg-secondary">🔒</span>`;
+                t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.total}</td><td>${btns}</td></tr>`;
+            });
         });
     },
+    edit: (id) => {
+        const r = window.lastData.find(x => x.id === id);
+        if(!r) return;
+        document.getElementById('reg-id').value = id; 
+        document.getElementById('reg-fecha').value = r.fechaRaw; 
+        document.getElementById('reg-trabajador').value = r.trabajador; 
+        document.getElementById('reg-cliente').value = r.cliente; 
+        document.getElementById('reg-actividad').value = r.actividad; 
+        document.getElementById('reg-entrada').value = r.entrada; 
+        document.getElementById('reg-salida').value = r.salida; 
+        document.getElementById('reg-almuerzo').checked = r.almuerzo; 
+        document.getElementById('btn-save').innerText = "ACTUALIZAR"; 
+        document.getElementById('btn-save').classList.replace('btn-gold','btn-warning'); 
+        document.getElementById('btn-cancel').classList.remove('d-none');
+    },
+    cancelEdit: () => { document.getElementById('form-registro').reset(); document.getElementById('reg-id').value = ""; document.getElementById('btn-save').innerText = "GUARDAR"; document.getElementById('btn-save').classList.replace('btn-warning','btn-gold'); document.getElementById('btn-cancel').classList.add('d-none'); },
+    del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{ toast("Eliminado"); app.loadGridDig(); }); },
+    updateSalary: () => { const t = document.getElementById('sal-trabajador').value; const m = document.getElementById('sal-monto').value; if(t && m) api("actualizar_salario", {nombre:t, nuevoSalario:m}).then(()=>{ toast("Salario Actualizado"); }); },
+
+    // --- FINANZAS ---
     modFinanzas: () => {
         if(!document.getElementById('filter-start').value) {
-            document.getElementById('filter-start').value = "2024-01-01"; // VER TODO DESDE 2024
+            document.getElementById('filter-start').value = "2024-01-01"; // Default 2024
             document.getElementById('filter-end').value = new Date().toISOString().split('T')[0];
         }
         const fI=document.getElementById('filter-start').value;
@@ -114,6 +152,8 @@ const app = {
         window.exportData.forEach(x => csv += `${x.nombre},${x.total_dinero}\n`);
         const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv); a.download = 'nomina.csv'; a.click();
     },
+
+    // --- CONFIG & EMPRESAS ---
     modConfig: () => {
         api("get_full_data").then(j => {
             const c=j.data.config;
@@ -143,10 +183,6 @@ const app = {
         api("save_config", pl).then(()=>alert("Guardado"));
     },
     modAdmin: () => { api("get_public_list").then(j => { const l=document.getElementById('emp-list'); l.innerHTML=""; j.data.forEach(e=>l.innerHTML+=`<li class="list-group-item">${e.nombre} (Token: ${e.id.substr(-4)})</li>`); }); },
-    admCreate: () => { const n=document.getElementById('new-emp-name').value; const t=document.getElementById('new-emp-token').value; if(n&&t) api("crear_empresa", {name:n, token:t}).then(()=>{ alert("Creada"); app.modAdmin(); }); },
-    edit: (id) => { /* misma logica V23 */ const r = window.lastData.find(x => x.id === id); document.getElementById('reg-id').value = id; document.getElementById('reg-fecha').value = r.fechaRaw; document.getElementById('reg-trabajador').value = r.trabajador; document.getElementById('reg-cliente').value = r.cliente; document.getElementById('reg-actividad').value = r.actividad; document.getElementById('reg-entrada').value = r.entrada; document.getElementById('reg-salida').value = r.salida; document.getElementById('reg-almuerzo').checked = r.almuerzo; document.getElementById('btn-save').innerText = "ACTUALIZAR"; document.getElementById('btn-save').classList.replace('btn-gold','btn-warning'); document.getElementById('btn-cancel').classList.remove('d-none'); },
-    cancelEdit: () => { document.getElementById('form-registro').reset(); document.getElementById('reg-id').value = ""; document.getElementById('btn-save').innerText = "GUARDAR"; document.getElementById('btn-save').classList.replace('btn-warning','btn-gold'); document.getElementById('btn-cancel').classList.add('d-none'); },
-    del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{ toast("Eliminado"); app.loadGridDig(); }); },
-    updateSalary: () => { const t = document.getElementById('sal-trabajador').value; const m = document.getElementById('sal-monto').value; if(t && m) api("actualizar_salario", {nombre:t, nuevoSalario:m}).then(()=>{ toast("Salario Actualizado"); }); }
+    admCreate: () => { const n=document.getElementById('new-emp-name').value; const t=document.getElementById('new-emp-token').value; if(n&&t) api("crear_empresa", {name:n, token:t}).then(()=>{ alert("Creada"); app.modAdmin(); }); }
 };
 document.addEventListener('DOMContentLoaded', app.init);
