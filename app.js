@@ -1,14 +1,14 @@
-/** APP.JS V21.0 - FINAL STABLE */
+/** APP.JS V22.0 (FINAL) */
 const CONFIG = {
-    // 🔴 PEGA TU URL
+    // 🔴 PEGA LA NUEVA URL DEL DEPLOY AQUÍ
     API: "https://script.google.com/macros/s/AKfycbwkFaP_G5bSYnalTk4w92OZ3FuSBMaSTF3x2z5TDGGqiR0R1Oa6V4hlxmcH0XvDTzyl/exec"
 };
 
-let S = JSON.parse(sessionStorage.getItem('vdh_v21')) || { dbId: null, role: null, viewRole: null };
+let S = JSON.parse(sessionStorage.getItem('vdh_v22')) || { dbId: null, role: null, viewRole: null };
 
 const api = async (act, pl={}) => {
     if(S.dbId) pl.dbId = S.dbId;
-    if(S.master) pl.masterKey = S.master;
+    if(S.isMaster) pl.masterKey = "VDH_MASTER_2026"; // Auto-inyeccion de credencial para Master
     try {
         const r = await fetch(CONFIG.API, {method:"POST", body:JSON.stringify({action:act, payload:pl})});
         return await r.json();
@@ -19,20 +19,17 @@ const toast = (m) => { document.getElementById('toast-msg').innerText=m; new boo
 
 const app = {
     init: () => {
-        if(S.role) app.setupInterface(S.viewRole);
+        if(S.role) app.setupInterface();
         else { app.switchView('view-login'); app.loadLogin(); }
     },
 
     loadLogin: () => {
         api("get_public_list").then(j => {
             const s = document.getElementById('login-empresa');
-            // FIX: Limpiamos y solo mostramos empresas, sin opción de admin
-            s.innerHTML = '<option value="" disabled selected>Seleccione Empresa...</option>';
+            s.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
             if(j.data) j.data.forEach(e => s.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
         });
     },
-
-    toggleAdminLogin: () => document.getElementById('admin-login-area').classList.toggle('d-none'),
 
     login: () => {
         const u = document.getElementById('login-empresa').value;
@@ -45,20 +42,11 @@ const app = {
             const d = j.data||j;
             if(j.status==='success') {
                 S.role = d.role; 
-                if(d.role === 'ADMIN') { S.master=p; S.viewRole='ADMIN'; } 
-                else { S.dbId=d.dbId; S.nombre=d.nombre; S.viewRole=roleType; S.isMaster=d.isMaster; }
-                sessionStorage.setItem('vdh_v21', JSON.stringify(S));
-                app.setupInterface(S.viewRole);
+                S.dbId = d.dbId; S.nombre = d.nombre; S.isMaster = d.isMaster;
+                sessionStorage.setItem('vdh_v22', JSON.stringify(S));
+                app.setupInterface();
             } else alert(j.message);
         }).finally(()=>document.getElementById('loader').classList.add('d-none'));
-    },
-
-    loginAdmin: () => {
-        const k = document.getElementById('master-key').value;
-        api("login", {user:"ADMIN", pass:k}).then(j=>{
-            if(j.status==='success') { S.role='ADMIN'; S.master=k; S.viewRole='ADMIN'; sessionStorage.setItem('vdh_v21',JSON.stringify(S)); app.setupInterface('ADMIN'); }
-            else alert("Clave Incorrecta");
-        });
     },
 
     logout: () => { sessionStorage.clear(); location.reload(); },
@@ -68,19 +56,20 @@ const app = {
         document.getElementById(id).classList.remove('d-none');
     },
 
-    setupInterface: (role) => {
+    setupInterface: () => {
         app.switchView('view-app');
-        document.getElementById('user-label').innerText = S.nombre || "Gerencia";
+        document.getElementById('user-label').innerText = `${S.nombre} (${S.role})`;
         const m = document.getElementById('menu-container'); m.innerHTML = "";
         
-        if(role === 'DIGITADOR') m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
-        else if (role === 'CONTADOR') {
+        if(S.role === 'DIGITADOR') {
+            m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
+            app.loadModule('registro');
+        } else if (S.role === 'CONTADOR') {
             m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('finanzas')"><i class="bi bi-cash-coin"></i> Finanzas</button>`;
             m.innerHTML += `<button class="menu-btn" onclick="app.loadModule('config')"><i class="bi bi-gear"></i> Configuración</button>`;
             if(S.isMaster) m.innerHTML += `<button class="menu-btn" onclick="app.loadModule('empresas')"><i class="bi bi-buildings"></i> Empresas</button>`;
-        } else if (role === 'ADMIN') m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('admin')"><i class="bi bi-buildings"></i> Empresas</button>`;
-        
-        const first = m.querySelector('.menu-btn'); if(first) app.loadModule(role === 'ADMIN' ? 'admin' : (role === 'DIGITADOR' ? 'registro' : 'finanzas'));
+            app.loadModule('finanzas');
+        }
     },
 
     loadModule: (mod) => {
@@ -93,8 +82,7 @@ const app = {
         if(mod === 'registro') app.modRegistro();
         if(mod === 'finanzas') app.modFinanzas();
         if(mod === 'config') app.modConfig();
-        if(mod === 'empresas') app.modAdmin(); // Para master contador
-        if(mod === 'admin') app.modAdmin(); // Para admin puro
+        if(mod === 'empresas') app.modEmpresas();
     },
 
     // --- DIGITADOR ---
@@ -130,27 +118,43 @@ const app = {
     del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{ toast("Eliminado"); app.loadGridDigitador(); }); },
     updateSalary: () => { const t = document.getElementById('sal-trabajador').value; const m = document.getElementById('sal-monto').value; if(t && m) api("actualizar_salario", {nombre:t, nuevoSalario:m}).then(()=>{ toast("Salario Actualizado"); }); },
 
-    // --- FINANZAS (LETRAS NEGRAS Y DETALLE) ---
+    // --- FINANZAS (6 ITEMS) ---
     modFinanzas: () => {
         const fI = document.getElementById('filter-start').value;
         const fF = document.getElementById('filter-end').value;
+        
+        api("get_grid", {inicio:fI, fin:fF}).then(j => {
+            const t = document.getElementById('grid-db'); if(t) t.innerHTML="";
+            if(j.data && j.data.data) j.data.data.forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.actividad}</td><td>${r.total}</td><td>${r.estado}</td></tr>`);
+        });
+
         api("get_finance", {inicio:fI, fin:fF}).then(j => {
             const d = j.data; if(!d) return;
             const tVal = document.getElementById('grid-valorizacion'); 
             const tHor = document.getElementById('grid-resumen-horas');
             if(tVal) tVal.innerHTML=""; if(tHor) tHor.innerHTML="";
-            
             window.exportData = d.resumen;
+            
+            // Guardamos IDs pendientes para aprobar
+            window.pendingIds = [];
+            if(d.pendientes) d.pendientes.forEach(p => window.pendingIds.push(p.rowId));
+
             d.resumen.forEach(r => {
-                tVal.innerHTML+=`<tr><td>${r.nombre}</td><td>$${r.v_rn.toLocaleString()}</td><td>$${r.v_ed.toLocaleString()}</td><td>$${r.v_en.toLocaleString()}</td><td>$${r.v_df.toLocaleString()}</td><td>$${r.v_edom.toLocaleString()}</td><td class="fw-bold text-success">$${r.total_dinero.toLocaleString()}</td></tr>`;
-                tHor.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.h_ord}</td><td>${r.h_rn}</td><td>${r.h_ed}</td><td>${r.h_en}</td><td>${r.h_df}</td><td>${r.h_edom}</td></tr>`;
+                tVal.innerHTML+=`<tr><td>${r.nombre}</td>
+                <td>$${r.v_rn.toLocaleString()}</td><td>$${r.v_ed.toLocaleString()}</td><td>$${r.v_en.toLocaleString()}</td>
+                <td>$${r.v_df.toLocaleString()}</td><td>$${r.v_edd.toLocaleString()}</td><td>$${r.v_edn.toLocaleString()}</td>
+                <td class="fw-bold text-success">$${r.total_dinero.toLocaleString()}</td></tr>`;
+                
+                tHor.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.h_rn}</td><td>${r.h_ed}</td><td>${r.h_en}</td><td>${r.h_df}</td><td>${r.h_edd}</td><td>${r.h_edn}</td></tr>`;
             });
         });
-        // Cargar DB
-        api("get_grid", {inicio:fI, fin:fF}).then(j => {
-            const t = document.getElementById('grid-db'); if(t) t.innerHTML="";
-            if(j.data && j.data.data) j.data.data.forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.actividad}</td><td>${r.total}</td><td>${r.estado}</td></tr>`);
-        });
+    },
+
+    approveAll: () => {
+        if(!window.pendingIds || window.pendingIds.length === 0) return alert("Nada por aprobar");
+        if(confirm("¿Aprobar y Bloquear registros?")) {
+            api("aprobar_lote", {ids: window.pendingIds}).then(()=>{ toast("Aprobado"); app.modFinanzas(); });
+        }
     },
 
     exportExcel: () => {
@@ -163,34 +167,48 @@ const app = {
         a.click();
     },
 
-    // --- CONFIG & FESTIVOS ---
+    // --- CONFIG ---
     modConfig: () => {
         api("get_full_data").then(j => {
-            const c = j.data.config; const days=["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
+            const c = j.data.config; 
+            document.getElementById('cfg-rn').value=c.FACTOR_REC_NOC;
+            document.getElementById('cfg-ed').value=c.FACTOR_EXT_DIU;
+            document.getElementById('cfg-en').value=c.FACTOR_EXT_NOC;
+            document.getElementById('cfg-df').value=c.FACTOR_DOM_FES;
+            document.getElementById('cfg-edom').value=c.FACTOR_EXT_DOM;
+            document.getElementById('cfg-edom-n').value=c.FACTOR_EXT_DOM_NOC; // Nuevo campo
+            
+            const days=["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
             let r={1:9,2:9,3:9,4:9,5:9,6:4,0:8}; try{r=JSON.parse(c.REGLAS_JORNADA)}catch(e){}
             const div = document.getElementById('cfg-jornada'); div.innerHTML="";
             days.forEach((d,i)=>div.innerHTML+=`<div class="d-flex justify-content-between mb-2"><span>${d}</span><input type="number" class="form-control form-control-sm w-25 dr" data-d="${i}" value="${r[i]||0}"></div>`);
-            document.getElementById('cfg-base').value=c.HORAS_BASE_MES||240; document.getElementById('cfg-rn').value=c.FACTOR_REC_NOC||0.35; document.getElementById('cfg-ed').value=c.FACTOR_EXT_DIU||1.25; document.getElementById('cfg-en').value=c.FACTOR_EXT_NOC||1.75; document.getElementById('cfg-df').value=c.FACTOR_DOM_FES||1.75; document.getElementById('cfg-edom').value=c.FACTOR_EXT_DOM||2.00;
         });
-    },
-    genFestivos: () => {
-        const y = document.getElementById('cfg-anio').value;
-        api("generar_festivos", {anio:y}).then(()=>toast("Festivos Generados"));
     },
     saveConfig: () => {
         const j={}; document.querySelectorAll('.dr').forEach(i=>j[i.dataset.d]=Number(i.value));
-        const pl = { jornada:j, factores:{ HORAS_BASE_MES:document.getElementById('cfg-base').value, FACTOR_REC_NOC:document.getElementById('cfg-rn').value, FACTOR_EXT_DIU:document.getElementById('cfg-ed').value, FACTOR_EXT_NOC:document.getElementById('cfg-en').value, FACTOR_DOM_FES:document.getElementById('cfg-df').value, FACTOR_EXT_DOM:document.getElementById('cfg-edom').value }};
+        const pl = { jornada:j, factores:{ 
+            FACTOR_REC_NOC:document.getElementById('cfg-rn').value, 
+            FACTOR_EXT_DIU:document.getElementById('cfg-ed').value, 
+            FACTOR_EXT_NOC:document.getElementById('cfg-en').value, 
+            FACTOR_DOM_FES:document.getElementById('cfg-df').value, 
+            FACTOR_EXT_DOM:document.getElementById('cfg-edom').value,
+            FACTOR_EXT_DOM_NOC:document.getElementById('cfg-edom-n').value
+        }};
         api("save_config", pl).then(()=>toast("Guardado"));
     },
 
-    modAdmin: () => {
+    // --- EMPRESAS (MASTER) ---
+    modEmpresas: () => {
         api("get_public_list").then(j => {
-            const t = document.getElementById('adm-list'); t.innerHTML="";
-            j.data.forEach(e => t.innerHTML+=`<tr><td>${e.nombre}</td><td><small>${e.token}</small></td><td><button class="btn btn-sm btn-danger" onclick="app.admDel('${e.id}')">X</button></td></tr>`);
+            const l = document.getElementById('emp-list'); l.innerHTML="";
+            j.data.forEach(e => l.innerHTML+=`<li class="list-group-item">${e.nombre} - <small class="text-muted">${e.id}</small></li>`);
         });
     },
-    admCreate: () => { const n=document.getElementById('adm-name').value; const t=document.getElementById('adm-token').value; if(n&&t) api("create_company",{name:n,token:t}).then(()=>{toast("Creada");app.modAdmin()}); },
-    admDel: (id) => { if(confirm("¿Eliminar?")) api("delete_company",{id:id}).then(()=>{toast("Eliminada");app.modAdmin()}); }
+    createCompany: () => {
+        const n = document.getElementById('new-emp-name').value;
+        const t = document.getElementById('new-emp-token').value;
+        if(n && t) api("crear_empresa", {name:n, token:t}).then(()=>{ toast("Empresa Creada"); app.modEmpresas(); });
+    }
 };
 
 document.addEventListener('DOMContentLoaded', app.init);
