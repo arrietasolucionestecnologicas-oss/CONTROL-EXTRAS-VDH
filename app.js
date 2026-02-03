@@ -1,10 +1,10 @@
-/** APP.JS V20.0 */
+/** APP.JS V21.0 - FINAL STABLE */
 const CONFIG = {
-    // 🔴 PEGA LA URL NUEVA
+    // 🔴 PEGA TU URL
     API: "https://script.google.com/macros/s/AKfycbwkFaP_G5bSYnalTk4w92OZ3FuSBMaSTF3x2z5TDGGqiR0R1Oa6V4hlxmcH0XvDTzyl/exec"
 };
 
-let S = JSON.parse(sessionStorage.getItem('vdh_v20')) || { dbId: null, role: null, viewRole: null };
+let S = JSON.parse(sessionStorage.getItem('vdh_v21')) || { dbId: null, role: null, viewRole: null };
 
 const api = async (act, pl={}) => {
     if(S.dbId) pl.dbId = S.dbId;
@@ -26,26 +26,39 @@ const app = {
     loadLogin: () => {
         api("get_public_list").then(j => {
             const s = document.getElementById('login-empresa');
-            s.innerHTML = '<option value="">Soy Administrador</option>';
+            // FIX: Limpiamos y solo mostramos empresas, sin opción de admin
+            s.innerHTML = '<option value="" disabled selected>Seleccione Empresa...</option>';
             if(j.data) j.data.forEach(e => s.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
         });
     },
+
+    toggleAdminLogin: () => document.getElementById('admin-login-area').classList.toggle('d-none'),
 
     login: () => {
         const u = document.getElementById('login-empresa').value;
         const p = document.getElementById('login-pass').value;
         const roleType = document.querySelector('input[name="role_radio"]:checked').value; 
+        
         document.getElementById('loader').classList.remove('d-none');
+        
         api("login", {user:u, pass:p, roleType: roleType}).then(j => {
             const d = j.data||j;
             if(j.status==='success') {
                 S.role = d.role; 
                 if(d.role === 'ADMIN') { S.master=p; S.viewRole='ADMIN'; } 
                 else { S.dbId=d.dbId; S.nombre=d.nombre; S.viewRole=roleType; S.isMaster=d.isMaster; }
-                sessionStorage.setItem('vdh_v20', JSON.stringify(S));
+                sessionStorage.setItem('vdh_v21', JSON.stringify(S));
                 app.setupInterface(S.viewRole);
             } else alert(j.message);
         }).finally(()=>document.getElementById('loader').classList.add('d-none'));
+    },
+
+    loginAdmin: () => {
+        const k = document.getElementById('master-key').value;
+        api("login", {user:"ADMIN", pass:k}).then(j=>{
+            if(j.status==='success') { S.role='ADMIN'; S.master=k; S.viewRole='ADMIN'; sessionStorage.setItem('vdh_v21',JSON.stringify(S)); app.setupInterface('ADMIN'); }
+            else alert("Clave Incorrecta");
+        });
     },
 
     logout: () => { sessionStorage.clear(); location.reload(); },
@@ -76,10 +89,12 @@ const app = {
         const content = document.getElementById('panel-content');
         const tpl = document.getElementById('tpl-'+mod);
         content.innerHTML = ""; content.appendChild(tpl.content.cloneNode(true));
+        
         if(mod === 'registro') app.modRegistro();
         if(mod === 'finanzas') app.modFinanzas();
         if(mod === 'config') app.modConfig();
-        if(mod === 'empresas') app.modAdmin();
+        if(mod === 'empresas') app.modAdmin(); // Para master contador
+        if(mod === 'admin') app.modAdmin(); // Para admin puro
     },
 
     // --- DIGITADOR ---
@@ -115,35 +130,26 @@ const app = {
     del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{ toast("Eliminado"); app.loadGridDigitador(); }); },
     updateSalary: () => { const t = document.getElementById('sal-trabajador').value; const m = document.getElementById('sal-monto').value; if(t && m) api("actualizar_salario", {nombre:t, nuevoSalario:m}).then(()=>{ toast("Salario Actualizado"); }); },
 
-    // --- FINANZAS (NUEVO) ---
+    // --- FINANZAS (LETRAS NEGRAS Y DETALLE) ---
     modFinanzas: () => {
         const fI = document.getElementById('filter-start').value;
         const fF = document.getElementById('filter-end').value;
-        
-        // 1. Cargar Base de Datos Cruda
-        api("get_grid", {inicio:fI, fin:fF}).then(j => {
-            const t = document.getElementById('grid-db'); if(t) t.innerHTML="";
-            if(j.data && j.data.data) {
-                j.data.data.forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.actividad}</td><td>${r.total}</td><td>${r.estado}</td></tr>`);
-            }
-        });
-
-        // 2. Cargar Resumen Financiero y Horas
         api("get_finance", {inicio:fI, fin:fF}).then(j => {
             const d = j.data; if(!d) return;
             const tVal = document.getElementById('grid-valorizacion'); 
             const tHor = document.getElementById('grid-resumen-horas');
-            if(tVal) tVal.innerHTML="";
-            if(tHor) tHor.innerHTML="";
+            if(tVal) tVal.innerHTML=""; if(tHor) tHor.innerHTML="";
             
             window.exportData = d.resumen;
-
             d.resumen.forEach(r => {
-                // Tabla Dinero
                 tVal.innerHTML+=`<tr><td>${r.nombre}</td><td>$${r.v_rn.toLocaleString()}</td><td>$${r.v_ed.toLocaleString()}</td><td>$${r.v_en.toLocaleString()}</td><td>$${r.v_df.toLocaleString()}</td><td>$${r.v_edom.toLocaleString()}</td><td class="fw-bold text-success">$${r.total_dinero.toLocaleString()}</td></tr>`;
-                // Tabla Horas
                 tHor.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.h_ord}</td><td>${r.h_rn}</td><td>${r.h_ed}</td><td>${r.h_en}</td><td>${r.h_df}</td><td>${r.h_edom}</td></tr>`;
             });
+        });
+        // Cargar DB
+        api("get_grid", {inicio:fI, fin:fF}).then(j => {
+            const t = document.getElementById('grid-db'); if(t) t.innerHTML="";
+            if(j.data && j.data.data) j.data.data.forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.actividad}</td><td>${r.total}</td><td>${r.estado}</td></tr>`);
         });
     },
 
@@ -157,6 +163,7 @@ const app = {
         a.click();
     },
 
+    // --- CONFIG & FESTIVOS ---
     modConfig: () => {
         api("get_full_data").then(j => {
             const c = j.data.config; const days=["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
@@ -165,6 +172,10 @@ const app = {
             days.forEach((d,i)=>div.innerHTML+=`<div class="d-flex justify-content-between mb-2"><span>${d}</span><input type="number" class="form-control form-control-sm w-25 dr" data-d="${i}" value="${r[i]||0}"></div>`);
             document.getElementById('cfg-base').value=c.HORAS_BASE_MES||240; document.getElementById('cfg-rn').value=c.FACTOR_REC_NOC||0.35; document.getElementById('cfg-ed').value=c.FACTOR_EXT_DIU||1.25; document.getElementById('cfg-en').value=c.FACTOR_EXT_NOC||1.75; document.getElementById('cfg-df').value=c.FACTOR_DOM_FES||1.75; document.getElementById('cfg-edom').value=c.FACTOR_EXT_DOM||2.00;
         });
+    },
+    genFestivos: () => {
+        const y = document.getElementById('cfg-anio').value;
+        api("generar_festivos", {anio:y}).then(()=>toast("Festivos Generados"));
     },
     saveConfig: () => {
         const j={}; document.querySelectorAll('.dr').forEach(i=>j[i.dataset.d]=Number(i.value));
