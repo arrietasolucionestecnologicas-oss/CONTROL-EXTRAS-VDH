@@ -1,7 +1,7 @@
 /** APP.JS V16.0 - UNIFIED */
 const CONFIG = {
     // 🔴 PEGA LA NUEVA URL AQUÍ
-    API: "https://script.google.com/macros/s/AKfycbyubr3wxCftRobp80h3KUgzZymjqrnasvB5HaJfi81Hn3XDh0sP28uoIuOU3B46cPpP/exec"
+    API: "https://script.google.com/macros/s/AKfycbwkFaP_G5bSYnalTk4w92OZ3FuSBMaSTF3x2z5TDGGqiR0R1Oa6V4hlxmcH0XvDTzyl/exec"
 };
 
 let S = JSON.parse(sessionStorage.getItem('vdh_v16')) || { dbId: null, role: null, viewRole: null };
