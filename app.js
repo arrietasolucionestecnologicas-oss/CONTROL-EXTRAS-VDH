@@ -1,10 +1,10 @@
-/** APP.JS V16.0 - UNIFIED */
+/** APP.JS V17.0 - PROFESSIONAL FEATURES */
 const CONFIG = {
-    // 🔴 PEGA LA NUEVA URL AQUÍ
-    API: "https://script.google.com/macros/s/AKfycbwkFaP_G5bSYnalTk4w92OZ3FuSBMaSTF3x2z5TDGGqiR0R1Oa6V4hlxmcH0XvDTzyl/exec"
+    // 🔴 PEGA LA URL NUEVA
+    API: "https://script.google.com/macros/s/AKfycbyubr3wxCftRobp80h3KUgzZymjqrnasvB5HaJfi81Hn3XDh0sP28uoIuOU3B46cPpP/exec"
 };
 
-let S = JSON.parse(sessionStorage.getItem('vdh_v16')) || { dbId: null, role: null, viewRole: null };
+let S = JSON.parse(sessionStorage.getItem('vdh_v17')) || { dbId: null, role: null, viewRole: null };
 
 const api = async (act, pl={}) => {
     if(S.dbId) pl.dbId = S.dbId;
@@ -40,9 +40,9 @@ const app = {
             const d = j.data||j;
             if(j.status==='success') {
                 S.role = d.role; 
-                if(d.role === 'ADMIN') { S.master = p; S.viewRole = 'ADMIN'; } 
-                else { S.dbId = d.dbId; S.nombre = d.nombre; S.viewRole = roleType; }
-                sessionStorage.setItem('vdh_v16', JSON.stringify(S));
+                if(d.role === 'ADMIN') { S.master=p; S.viewRole='ADMIN'; } 
+                else { S.dbId=d.dbId; S.nombre=d.nombre; S.viewRole=roleType; }
+                sessionStorage.setItem('vdh_v17', JSON.stringify(S));
                 app.setupInterface(S.viewRole);
             } else alert(j.message);
         }).finally(()=>document.getElementById('loader').classList.add('d-none'));
@@ -58,15 +58,17 @@ const app = {
     setupInterface: (role) => {
         app.switchView('view-app');
         document.getElementById('user-label').innerText = S.nombre || "Gerencia";
-        const menu = document.getElementById('menu-container'); menu.innerHTML = "";
-        if(role === 'DIGITADOR') menu.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
-        else if (role === 'CONTADOR') {
-            menu.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('finanzas')"><i class="bi bi-cash-coin"></i> Finanzas</button>`;
-            menu.innerHTML += `<button class="menu-btn" onclick="app.loadModule('config')"><i class="bi bi-gear"></i> Configuración</button>`;
-            menu.innerHTML += `<button class="menu-btn" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Auditoría</button>`;
-        } else if (role === 'ADMIN') menu.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('admin')"><i class="bi bi-buildings"></i> Empresas</button>`;
+        const m = document.getElementById('menu-container'); m.innerHTML = "";
         
-        const first = menu.querySelector('.menu-btn'); if(first) app.loadModule(role === 'ADMIN' ? 'admin' : (role === 'DIGITADOR' ? 'registro' : 'finanzas'));
+        if(role === 'DIGITADOR') m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
+        else if (role === 'CONTADOR') {
+            m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('finanzas')"><i class="bi bi-cash-coin"></i> Finanzas</button>`;
+            m.innerHTML += `<button class="menu-btn" onclick="app.loadModule('config')"><i class="bi bi-gear"></i> Configuración</button>`;
+        } else if (role === 'ADMIN') {
+            m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('admin')"><i class="bi bi-buildings"></i> Empresas</button>`;
+        }
+        
+        const first = m.querySelector('.menu-btn'); if(first) app.loadModule(role === 'ADMIN' ? 'admin' : (role === 'DIGITADOR' ? 'registro' : 'finanzas'));
     },
 
     loadModule: (mod) => {
@@ -81,6 +83,7 @@ const app = {
         if(mod === 'admin') app.modAdmin();
     },
 
+    // --- MODULO REGISTRO ---
     modRegistro: () => {
         api("get_full_data").then(j => {
             const d = j.data;
@@ -96,7 +99,6 @@ const app = {
             api(act, id ? {idRegistro:id, datos:pl} : {registros:[pl]}).then(() => { toast(id?"Actualizado":"Guardado"); app.cancelEdit(); app.loadGridDigitador(); });
         };
     },
-
     loadGridDigitador: () => {
         api("get_grid").then(j => {
             const t = document.getElementById('grid-digitador'); if(!t) return;
@@ -105,31 +107,62 @@ const app = {
             data.forEach(r => t.innerHTML += `<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.total}h</td><td><button class="btn btn-sm btn-outline-primary" onclick="app.edit('${r.id}')"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="app.del('${r.id}')"><i class="bi bi-trash"></i></button></td></tr>`);
         });
     },
-
     edit: (id) => {
         const r = window.lastData.find(x => x.id === id);
         document.getElementById('reg-id').value = id; document.getElementById('reg-fecha').value = r.fechaRaw; document.getElementById('reg-trabajador').value = r.trabajador; document.getElementById('reg-cliente').value = r.cliente; document.getElementById('reg-actividad').value = r.actividad; document.getElementById('reg-entrada').value = r.entrada; document.getElementById('reg-salida').value = r.salida; document.getElementById('reg-almuerzo').checked = r.almuerzo;
         document.getElementById('btn-save').innerText = "ACTUALIZAR"; document.getElementById('btn-save').classList.replace('btn-gold','btn-warning'); document.getElementById('btn-cancel').classList.remove('d-none');
     },
-
-    cancelEdit: () => {
-        document.getElementById('form-registro').reset(); document.getElementById('reg-id').value = ""; document.getElementById('btn-save').innerText = "GUARDAR"; document.getElementById('btn-save').classList.replace('btn-warning','btn-gold'); document.getElementById('btn-cancel').classList.add('d-none');
-    },
-
+    cancelEdit: () => { document.getElementById('form-registro').reset(); document.getElementById('reg-id').value = ""; document.getElementById('btn-save').innerText = "GUARDAR"; document.getElementById('btn-save').classList.replace('btn-warning','btn-gold'); document.getElementById('btn-cancel').classList.add('d-none'); },
     del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{ toast("Eliminado"); app.loadGridDigitador(); }); },
     updateSalary: () => { const t = document.getElementById('sal-trabajador').value; const m = document.getElementById('sal-monto').value; if(t && m) api("actualizar_salario", {nombre:t, nuevoSalario:m}).then(()=>{ toast("Salario Actualizado"); }); },
 
+    // --- MODULO FINANZAS PRO ---
     modFinanzas: () => {
-        api("get_finance").then(j => {
+        const fI = document.getElementById('filter-start').value;
+        const fF = document.getElementById('filter-end').value;
+        api("get_finance", {inicio:fI, fin:fF}).then(j => {
             const d = j.data; if(!d) return;
             const t = document.getElementById('grid-finanzas'); if(t) t.innerHTML="";
-            if(d.pendientes) d.pendientes.forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trab}</td><td>${r.total}</td><td>${r.ord}</td><td>${r.rn}</td><td>${r.ed}</td><td>${r.en}</td><td>${r.df}</td><td>${r.edom}</td><td class="text-end fw-bold text-success">$${r.valor.toLocaleString()}</td><td><button class="btn btn-sm btn-success py-0" onclick="app.approve('${r.rowId}')">OK</button></td></tr>`);
+            
+            // Guardamos IDs para aprobacion masiva
+            window.pendingIds = [];
+            
+            if(d.pendientes) d.pendientes.forEach(r => {
+                window.pendingIds.push(r.rowId);
+                t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trab}</td><td>${r.total}</td><td>${r.ord}</td><td>${r.rn}</td><td>${r.ed}</td><td>${r.en}</td><td>${r.df}</td><td>${r.edom}</td><td class="text-end fw-bold text-success">$${r.valor.toLocaleString()}</td></tr>`;
+            });
             const tr = document.getElementById('grid-resumen'); if(tr) tr.innerHTML="";
-            if(d.resumen) d.resumen.forEach(r => tr.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.horas.toFixed(2)}h</td><td class="text-success fw-bold">$${r.dinero.toLocaleString()}</td></tr>`);
+            if(d.resumen) {
+                // Para exportar guardamos el resumen
+                window.exportData = d.resumen;
+                d.resumen.forEach(r => tr.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.horas.toFixed(2)}h</td><td class="text-success fw-bold">$${r.dinero.toLocaleString()}</td></tr>`);
+            }
         });
     },
     
-    approve: (id) => { api("aprobar_hora", {rowId:id}).then(()=>{ toast("Aprobado"); app.modFinanzas(); }); },
+    approveAll: () => {
+        if(!window.pendingIds || window.pendingIds.length === 0) return alert("Nada pendiente para aprobar");
+        if(confirm(`¿Aprobar y pagar ${window.pendingIds.length} registros filtrados?`)) {
+            api("aprobar_lote", {ids: window.pendingIds}).then(j => {
+                toast("Lote Aprobado");
+                app.modFinanzas();
+            });
+        }
+    },
+
+    exportExcel: () => {
+        if(!window.exportData || window.exportData.length === 0) return alert("Sin datos para exportar");
+        let csvContent = "data:text/csv;charset=utf-8,TRABAJADOR,HORAS_TOTALES,A_PAGAR\n";
+        window.exportData.forEach(r => {
+            csvContent += `${r.nombre},${r.horas.toFixed(2)},${r.dinero}\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "nomina_vdh.csv");
+        document.body.appendChild(link);
+        link.click();
+    },
 
     modConfig: () => {
         api("get_full_data").then(j => {
