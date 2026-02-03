@@ -1,16 +1,14 @@
-/** APP.JS V19.0 */
+/** APP.JS V20.0 */
 const CONFIG = {
     // 🔴 PEGA LA URL NUEVA
     API: "https://script.google.com/macros/s/AKfycbwkFaP_G5bSYnalTk4w92OZ3FuSBMaSTF3x2z5TDGGqiR0R1Oa6V4hlxmcH0XvDTzyl/exec"
 };
 
-let S = JSON.parse(sessionStorage.getItem('vdh_v19')) || { dbId: null, role: null, isMaster: false };
+let S = JSON.parse(sessionStorage.getItem('vdh_v20')) || { dbId: null, role: null, viewRole: null };
 
 const api = async (act, pl={}) => {
     if(S.dbId) pl.dbId = S.dbId;
-    // Si es Contador Master, enviamos la Master Key siempre para autorizar acciones
-    if(S.isMaster) pl.masterKey = "VDH_MASTER_2026"; 
-    
+    if(S.master) pl.masterKey = S.master;
     try {
         const r = await fetch(CONFIG.API, {method:"POST", body:JSON.stringify({action:act, payload:pl})});
         return await r.json();
@@ -21,14 +19,14 @@ const toast = (m) => { document.getElementById('toast-msg').innerText=m; new boo
 
 const app = {
     init: () => {
-        if(S.role) app.setupInterface();
+        if(S.role) app.setupInterface(S.viewRole);
         else { app.switchView('view-login'); app.loadLogin(); }
     },
 
     loadLogin: () => {
         api("get_public_list").then(j => {
             const s = document.getElementById('login-empresa');
-            s.innerHTML = '<option value="" disabled selected>Seleccione...</option>';
+            s.innerHTML = '<option value="">Soy Administrador</option>';
             if(j.data) j.data.forEach(e => s.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
         });
     },
@@ -37,23 +35,15 @@ const app = {
         const u = document.getElementById('login-empresa').value;
         const p = document.getElementById('login-pass').value;
         const roleType = document.querySelector('input[name="role_radio"]:checked').value; 
-        
-        if(!u) return alert("Seleccione una empresa");
-        if(!p) return alert("Ingrese contraseña");
-
         document.getElementById('loader').classList.remove('d-none');
-        
-        // Enviamos roleType para que el backend valide según el tipo
         api("login", {user:u, pass:p, roleType: roleType}).then(j => {
             const d = j.data||j;
             if(j.status==='success') {
-                S.role = d.role; // DIGITADOR o CONTADOR
-                S.dbId = d.dbId; 
-                S.nombre = d.nombre;
-                S.isMaster = d.isMaster || false; // Flag para activar tab Empresas
-                
-                sessionStorage.setItem('vdh_v19', JSON.stringify(S));
-                app.setupInterface();
+                S.role = d.role; 
+                if(d.role === 'ADMIN') { S.master=p; S.viewRole='ADMIN'; } 
+                else { S.dbId=d.dbId; S.nombre=d.nombre; S.viewRole=roleType; S.isMaster=d.isMaster; }
+                sessionStorage.setItem('vdh_v20', JSON.stringify(S));
+                app.setupInterface(S.viewRole);
             } else alert(j.message);
         }).finally(()=>document.getElementById('loader').classList.add('d-none'));
     },
@@ -65,23 +55,19 @@ const app = {
         document.getElementById(id).classList.remove('d-none');
     },
 
-    setupInterface: () => {
+    setupInterface: (role) => {
         app.switchView('view-app');
-        document.getElementById('user-label').innerText = `${S.nombre} (${S.role})`;
+        document.getElementById('user-label').innerText = S.nombre || "Gerencia";
         const m = document.getElementById('menu-container'); m.innerHTML = "";
         
-        if(S.role === 'DIGITADOR') {
-            m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
-            app.loadModule('registro');
-        } else if (S.role === 'CONTADOR') {
+        if(role === 'DIGITADOR') m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('registro')"><i class="bi bi-pencil"></i> Registro</button>`;
+        else if (role === 'CONTADOR') {
             m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('finanzas')"><i class="bi bi-cash-coin"></i> Finanzas</button>`;
             m.innerHTML += `<button class="menu-btn" onclick="app.loadModule('config')"><i class="bi bi-gear"></i> Configuración</button>`;
-            // SOLO SI ES MASTER CONTADOR:
-            if(S.isMaster) {
-                m.innerHTML += `<button class="menu-btn" onclick="app.loadModule('empresas')"><i class="bi bi-buildings"></i> Empresas</button>`;
-            }
-            app.loadModule('finanzas');
-        }
+            if(S.isMaster) m.innerHTML += `<button class="menu-btn" onclick="app.loadModule('empresas')"><i class="bi bi-buildings"></i> Empresas</button>`;
+        } else if (role === 'ADMIN') m.innerHTML += `<button class="menu-btn active" onclick="app.loadModule('admin')"><i class="bi bi-buildings"></i> Empresas</button>`;
+        
+        const first = m.querySelector('.menu-btn'); if(first) app.loadModule(role === 'ADMIN' ? 'admin' : (role === 'DIGITADOR' ? 'registro' : 'finanzas'));
     },
 
     loadModule: (mod) => {
@@ -90,17 +76,13 @@ const app = {
         const content = document.getElementById('panel-content');
         const tpl = document.getElementById('tpl-'+mod);
         content.innerHTML = ""; content.appendChild(tpl.content.cloneNode(true));
-        
         if(mod === 'registro') app.modRegistro();
         if(mod === 'finanzas') app.modFinanzas();
         if(mod === 'config') app.modConfig();
-        if(mod === 'empresas') app.modAdmin(); // Reusa lógica admin
+        if(mod === 'empresas') app.modAdmin();
     },
 
-    // ... (RESTO DE FUNCIONES IGUAL QUE V17 - SIN CAMBIOS DE LÓGICA INTERNA) ...
-    // Solo asegurarnos de copiar las funciones modRegistro, loadGridDigitador, edit, cancelEdit, del, updateSalary, modFinanzas, approveAll, exportExcel, modConfig, saveConfig, modAdmin, admCreate, admDel del código anterior.
-    // POR INTEGRIDAD, LAS PEGO AQUÍ COMPLETAS:
-
+    // --- DIGITADOR ---
     modRegistro: () => {
         api("get_full_data").then(j => {
             const d = j.data;
@@ -121,7 +103,7 @@ const app = {
             const t = document.getElementById('grid-digitador'); if(!t) return;
             t.innerHTML=""; const data = (j.data && j.data.data) ? j.data.data.slice(0,50) : [];
             window.lastData = data; 
-            data.forEach(r => t.innerHTML += `<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.total}h</td><td><button class="btn btn-sm btn-outline-primary" onclick="app.edit('${r.id}')"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="app.del('${r.id}')"><i class="bi bi-trash"></i></button></td></tr>`);
+            data.forEach(r => t.innerHTML += `<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.total}h</td><td><button class="btn btn-sm btn-outline-primary" onclick="app.edit('${r.id}')">✏️</button> <button class="btn btn-sm btn-outline-danger" onclick="app.del('${r.id}')">🗑️</button></td></tr>`);
         });
     },
     edit: (id) => {
@@ -133,47 +115,46 @@ const app = {
     del: (id) => { if(confirm("¿Borrar?")) api("delete_entry", {idRegistro:id}).then(()=>{ toast("Eliminado"); app.loadGridDigitador(); }); },
     updateSalary: () => { const t = document.getElementById('sal-trabajador').value; const m = document.getElementById('sal-monto').value; if(t && m) api("actualizar_salario", {nombre:t, nuevoSalario:m}).then(()=>{ toast("Salario Actualizado"); }); },
 
+    // --- FINANZAS (NUEVO) ---
     modFinanzas: () => {
         const fI = document.getElementById('filter-start').value;
         const fF = document.getElementById('filter-end').value;
-        api("get_finance", {inicio:fI, fin:fF}).then(j => {
-            const d = j.data; if(!d) return;
-            const t = document.getElementById('grid-finanzas'); if(t) t.innerHTML="";
-            window.pendingIds = [];
-            if(d.pendientes) d.pendientes.forEach(r => {
-                window.pendingIds.push(r.rowId);
-                t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trab}</td><td>${r.total}</td><td>${r.ord}</td><td>${r.rn}</td><td>${r.ed}</td><td>${r.en}</td><td>${r.df}</td><td>${r.edom}</td><td class="text-end fw-bold text-success">$${r.valor.toLocaleString()}</td></tr>`;
-            });
-            const tr = document.getElementById('grid-resumen'); if(tr) tr.innerHTML="";
-            if(d.resumen) {
-                window.exportData = d.resumen;
-                d.resumen.forEach(r => tr.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.horas.toFixed(2)}h</td><td class="text-success fw-bold">$${r.dinero.toLocaleString()}</td></tr>`);
+        
+        // 1. Cargar Base de Datos Cruda
+        api("get_grid", {inicio:fI, fin:fF}).then(j => {
+            const t = document.getElementById('grid-db'); if(t) t.innerHTML="";
+            if(j.data && j.data.data) {
+                j.data.data.forEach(r => t.innerHTML+=`<tr><td>${r.fecha}</td><td>${r.trabajador}</td><td>${r.cliente}</td><td>${r.actividad}</td><td>${r.total}</td><td>${r.estado}</td></tr>`);
             }
         });
-    },
-    
-    approveAll: () => {
-        if(!window.pendingIds || window.pendingIds.length === 0) return alert("Nada pendiente para aprobar");
-        if(confirm(`¿Aprobar y pagar ${window.pendingIds.length} registros filtrados?`)) {
-            api("aprobar_lote", {ids: window.pendingIds}).then(j => {
-                toast("Lote Aprobado");
-                app.modFinanzas();
+
+        // 2. Cargar Resumen Financiero y Horas
+        api("get_finance", {inicio:fI, fin:fF}).then(j => {
+            const d = j.data; if(!d) return;
+            const tVal = document.getElementById('grid-valorizacion'); 
+            const tHor = document.getElementById('grid-resumen-horas');
+            if(tVal) tVal.innerHTML="";
+            if(tHor) tHor.innerHTML="";
+            
+            window.exportData = d.resumen;
+
+            d.resumen.forEach(r => {
+                // Tabla Dinero
+                tVal.innerHTML+=`<tr><td>${r.nombre}</td><td>$${r.v_rn.toLocaleString()}</td><td>$${r.v_ed.toLocaleString()}</td><td>$${r.v_en.toLocaleString()}</td><td>$${r.v_df.toLocaleString()}</td><td>$${r.v_edom.toLocaleString()}</td><td class="fw-bold text-success">$${r.total_dinero.toLocaleString()}</td></tr>`;
+                // Tabla Horas
+                tHor.innerHTML+=`<tr><td>${r.nombre}</td><td>${r.h_ord}</td><td>${r.h_rn}</td><td>${r.h_ed}</td><td>${r.h_en}</td><td>${r.h_df}</td><td>${r.h_edom}</td></tr>`;
             });
-        }
+        });
     },
 
     exportExcel: () => {
-        if(!window.exportData || window.exportData.length === 0) return alert("Sin datos para exportar");
-        let csvContent = "data:text/csv;charset=utf-8,TRABAJADOR,HORAS_TOTALES,A_PAGAR\n";
-        window.exportData.forEach(r => {
-            csvContent += `${r.nombre},${r.horas.toFixed(2)},${r.dinero}\n`;
-        });
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "nomina_vdh.csv");
-        document.body.appendChild(link);
-        link.click();
+        if(!window.exportData) return alert("Sin datos");
+        let csv = "TRABAJADOR,TOTAL A PAGAR\n";
+        window.exportData.forEach(x => csv += `${x.nombre},${x.total_dinero}\n`);
+        const a = document.createElement('a');
+        a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+        a.download = 'nomina.csv';
+        a.click();
     },
 
     modConfig: () => {
